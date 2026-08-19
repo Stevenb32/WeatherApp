@@ -228,14 +228,4 @@ public sealed class WeatherApiClientTests
         .Be("WeatherAPI request failed with status code 500.");
   }
 
-
-
-
-
-
-
-
-
-
-
 }
