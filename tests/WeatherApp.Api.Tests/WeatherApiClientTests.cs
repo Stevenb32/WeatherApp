@@ -34,7 +34,8 @@ public sealed class WeatherApiClientTests
                             "name": "Tampa",
                             "region": "Florida",
                             "country": "United States of America",
-                            "tz_id": "America/New_York"
+                            "tz_id": "America/New_York",
+                            "localtime_epoch": 1787038200
                           },
                           "current": {
                             "temp_c": 31.0,
@@ -106,6 +107,7 @@ public sealed class WeatherApiClientTests
 
     result.Location.Name.Should().Be("Tampa");
     result.Current.TemperatureC.Should().Be(31.0);
+    result.Location.LocalTimeEpoch.Should().Be(1787038200);
     result.Current.Condition.Text.Should().Be("Partly cloudy");
 
     var forecastDay = result.Forecast.ForecastDays
