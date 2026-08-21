@@ -27,6 +27,9 @@ public sealed class WeatherApiLocation
 
     [JsonPropertyName("tz_id")]
     public string TimeZoneId { get; set; } = string.Empty;
+
+    [JsonPropertyName("localtime_epoch")]
+    public long LocalTimeEpoch { get; set; }
 }
 
 public sealed class WeatherApiCurrent
