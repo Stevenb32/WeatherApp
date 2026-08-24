@@ -1,10 +1,18 @@
-using WeatherApp.Api.WeatherApi;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
-
+using WeatherApp.Api.Weather;
+using WeatherApp.Api.WeatherApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(
+        new JsonStringEnumConverter(
+            JsonNamingPolicy.CamelCase,
+            allowIntegerValues: false));
+});
 
 builder.Services
     .AddOptions<WeatherApiOptions>()
@@ -17,6 +25,9 @@ builder.Services
     .Validate(
         options => !string.IsNullOrWhiteSpace(options.ApiKey),
         "WeatherApi:ApiKey is required.")
+    .Validate(
+        options => options.Timeout > TimeSpan.Zero,
+        "WeatherApi:Timeout must be greater than zero.")
     .ValidateOnStart();
 
 builder.Services.AddHttpClient<WeatherApiClient>(
@@ -27,15 +38,18 @@ builder.Services.AddHttpClient<WeatherApiClient>(
             .Value;
 
         httpClient.BaseAddress = new Uri(options.BaseUrl);
+
+        httpClient.Timeout = options.Timeout;
     });
-
-
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-
 app.UseHttpsRedirection();
 
+app.MapGet("/health", () => Results.Ok());
+
+app.MapWeatherEndpoints();
 
 app.Run();
+
+public partial class Program { }
