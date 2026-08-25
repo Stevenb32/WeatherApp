@@ -1,4 +1,6 @@
 using System.Net;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 using WeatherApp.Api.WeatherApi;
 
 namespace WeatherApp.Api.Weather;
@@ -17,6 +19,8 @@ public static class WeatherEndpoints
         string? location,
         string? units,
         WeatherApiClient weatherApiClient,
+        IMemoryCache memoryCache,
+        IOptions<WeatherApiOptions> weatherApiOptions,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(location))
@@ -57,11 +61,32 @@ public static class WeatherEndpoints
                 statusCode: StatusCodes.Status400BadRequest);
         }
 
+        var normalizedLocation = location.Trim();
+
+        var cacheKey =
+            $"weather:forecast:days=3:{normalizedLocation.ToUpperInvariant()}";
+
         try
         {
-            var providerResponse = await weatherApiClient.GetForecastAsync(
-                location,
-                cancellationToken);
+            if (
+                !memoryCache.TryGetValue<WeatherApiForecastResponse>(
+                    cacheKey,
+                    out var providerResponse) ||
+                    providerResponse is null)
+            {
+                providerResponse = await weatherApiClient.GetForecastAsync(
+                    normalizedLocation,
+                    cancellationToken);
+
+                memoryCache.Set(
+                    cacheKey,
+                    providerResponse,
+                    new MemoryCacheEntryOptions
+                    {
+                        AbsoluteExpirationRelativeToNow =
+                            weatherApiOptions.Value.CacheDuration
+                    });
+            }
 
             var weatherResponse = WeatherApiForecastMapper.Map(
                 providerResponse,

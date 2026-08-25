@@ -28,7 +28,12 @@ builder.Services
     .Validate(
         options => options.Timeout > TimeSpan.Zero,
         "WeatherApi:Timeout must be greater than zero.")
+    .Validate(
+        options => options.CacheDuration > TimeSpan.Zero,
+        "WeatherApi:CacheDuration must be greater than zero.")
     .ValidateOnStart();
+
+builder.Services.AddMemoryCache();
 
 builder.Services.AddHttpClient<WeatherApiClient>(
     (serviceProvider, httpClient) =>

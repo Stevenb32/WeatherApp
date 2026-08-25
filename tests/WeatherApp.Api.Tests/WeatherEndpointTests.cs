@@ -100,6 +100,297 @@ public sealed class WeatherEndpointTests
         server.LogEntries.Should().ContainSingle();
     }
 
+    [Fact]
+    public async Task GetWeather_WhenSameLocationIsRequestedTwice_CallsWeatherProviderOnlyOnce()
+    {
+        using var server = WireMockServer.Start();
+
+        ConfigureSuccessfulWeatherResponse(server);
+
+        using var factory = new WeatherAppFactory(server.Urls[0]);
+
+        using var client = CreateApiClient(factory);
+
+        var firstResponse = await client.GetAsync(
+            "/api/weather?location=Tampa&units=imperial");
+
+        firstResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        server.LogEntries.Should().ContainSingle();
+
+        var secondResponse = await client.GetAsync(
+            "/api/weather?location=Tampa&units=imperial");
+
+        secondResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        server.LogEntries.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task GetWeather_WhenSameLocationIsRequestedWithDifferentUnits_ReusesCachedProviderResponse()
+    {
+        using var server = WireMockServer.Start();
+
+        ConfigureSuccessfulWeatherResponse(server);
+
+        using var factory = new WeatherAppFactory(server.Urls[0]);
+
+        using var client = CreateApiClient(factory);
+
+        var imperialResponse = await client.GetAsync(
+            "/api/weather?location=Tampa&units=imperial");
+
+        imperialResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var imperialDocument = JsonDocument.Parse(
+            await imperialResponse.Content.ReadAsStringAsync());
+
+        var imperialRoot = imperialDocument.RootElement;
+
+        imperialRoot
+            .GetProperty("unitSystem")
+            .GetString()
+            .Should()
+            .Be("imperial");
+
+        imperialRoot
+            .GetProperty("current")
+            .GetProperty("temperature")
+            .GetDouble()
+            .Should()
+            .Be(87.8);
+
+        imperialRoot
+            .GetProperty("current")
+            .GetProperty("windSpeed")
+            .GetDouble()
+            .Should()
+            .Be(8.1);
+
+        server.LogEntries.Should().ContainSingle();
+
+        var metricResponse = await client.GetAsync(
+            "/api/weather?location=Tampa&units=metric");
+
+        metricResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var metricDocument = JsonDocument.Parse(
+            await metricResponse.Content.ReadAsStringAsync());
+
+        var metricRoot = metricDocument.RootElement;
+
+        metricRoot
+            .GetProperty("unitSystem")
+            .GetString()
+            .Should()
+            .Be("metric");
+
+        metricRoot
+            .GetProperty("current")
+            .GetProperty("temperature")
+            .GetDouble()
+            .Should()
+            .Be(31.0);
+
+        metricRoot
+            .GetProperty("current")
+            .GetProperty("windSpeed")
+            .GetDouble()
+            .Should()
+            .Be(13.0);
+
+        server.LogEntries.Should().ContainSingle();
+    }
+
+    [Theory]
+    [InlineData("tampa")]
+    [InlineData("TAMPA")]
+    [InlineData(" Tampa ")]
+    [InlineData(" tAmPa ")]
+    public async Task GetWeather_WhenLocationCasingOrWhitespaceDiffers_ReusesCachedProviderResponse(
+        string locationVariant)
+    {
+        using var server = WireMockServer.Start();
+
+        ConfigureSuccessfulWeatherResponse(server);
+
+        using var factory = new WeatherAppFactory(server.Urls[0]);
+
+        using var client = CreateApiClient(factory);
+
+        var firstResponse = await client.GetAsync(
+            "/api/weather?location=Tampa&units=imperial");
+
+        firstResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        server.LogEntries.Should().ContainSingle();
+
+        var encodedLocation = Uri.EscapeDataString(locationVariant);
+
+        var secondResponse = await client.GetAsync(
+            $"/api/weather?location={encodedLocation}&units=imperial");
+
+        secondResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        server.LogEntries.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task GetWeather_WhenDifferentLocationsAreRequested_UsesSeparateCacheEntries()
+    {
+        using var server = WireMockServer.Start();
+
+        ConfigureSuccessfulWeatherResponse(server, "Tampa");
+
+        ConfigureSuccessfulWeatherResponse(server, "Orlando");
+
+        using var factory = new WeatherAppFactory(server.Urls[0]);
+
+        using var client = CreateApiClient(factory);
+
+        var tampaResponse = await client.GetAsync(
+            "/api/weather?location=Tampa&units=imperial");
+
+        tampaResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var tampaDocument = JsonDocument.Parse(
+            await tampaResponse.Content.ReadAsStringAsync());
+
+        tampaDocument.RootElement
+            .GetProperty("location")
+            .GetProperty("name")
+            .GetString()
+            .Should()
+            .Be("Tampa");
+
+        server.LogEntries.Should().ContainSingle();
+
+        var orlandoResponse = await client.GetAsync(
+            "/api/weather?location=Orlando&units=imperial");
+
+        orlandoResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var orlandoDocument = JsonDocument.Parse(
+            await orlandoResponse.Content.ReadAsStringAsync());
+
+        orlandoDocument.RootElement
+            .GetProperty("location")
+            .GetProperty("name")
+            .GetString()
+            .Should()
+            .Be("Orlando");
+
+        server.LogEntries.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task GetWeather_WhenCacheEntryExpires_CallsWeatherProviderAgain()
+    {
+        using var server = WireMockServer.Start();
+
+        ConfigureSuccessfulWeatherResponse(server);
+
+        var cacheDuration = TimeSpan.FromMinutes(5);
+
+        var clock = new TestSystemClock(
+            new DateTimeOffset(
+                2026,
+                8,
+                25,
+                12,
+                0,
+                0,
+                TimeSpan.Zero));
+
+        using var factory = new WeatherAppFactory(
+            server.Urls[0],
+            weatherApiCacheDuration: cacheDuration,
+            cacheClock: clock);
+
+        using var client = CreateApiClient(factory);
+
+        var firstResponse = await client.GetAsync(
+            "/api/weather?location=Tampa&units=imperial");
+
+        firstResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        server.LogEntries.Should().ContainSingle();
+
+        clock.Advance(
+            cacheDuration - TimeSpan.FromSeconds(1));
+
+        var beforeExpirationResponse = await client.GetAsync(
+            "/api/weather?location=Tampa&units=imperial");
+
+        beforeExpirationResponse.StatusCode
+            .Should()
+            .Be(HttpStatusCode.OK);
+
+        server.LogEntries.Should().ContainSingle();
+
+        clock.Advance(TimeSpan.FromSeconds(2));
+
+        var afterExpirationResponse = await client.GetAsync(
+            "/api/weather?location=Tampa&units=imperial");
+
+        afterExpirationResponse.StatusCode
+            .Should()
+            .Be(HttpStatusCode.OK);
+
+        server.LogEntries.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task GetWeather_WhenProviderRequestFails_DoesNotCacheFailure()
+    {
+        using var server = WireMockServer.Start();
+
+        server
+            .Given(
+                Request.Create()
+                    .WithPath("/v1/forecast.json")
+                    .UsingGet()
+                    .WithParam("key", "test-api-key")
+                    .WithParam("q", "Tampa")
+                    .WithParam("days", "3"))
+            .RespondWith(
+                Response.Create()
+                    .WithStatusCode(500));
+
+        using var factory = new WeatherAppFactory(server.Urls[0]);
+
+        using var client = CreateApiClient(factory);
+
+        var firstResponse = await client.GetAsync(
+            "/api/weather?location=Tampa&units=imperial");
+
+        firstResponse.StatusCode
+            .Should()
+            .Be(HttpStatusCode.ServiceUnavailable);
+
+        server.LogEntries.Should().ContainSingle();
+
+        var secondResponse = await client.GetAsync(
+            "/api/weather?location=Tampa&units=imperial");
+
+        secondResponse.StatusCode
+            .Should()
+            .Be(HttpStatusCode.ServiceUnavailable);
+
+        server.LogEntries.Should().HaveCount(2);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
     [Theory]
     [InlineData("metric")]
     [InlineData("METRIC")]
@@ -620,9 +911,11 @@ public sealed class WeatherEndpointTests
             });
     }
 
-    private static void ConfigureSuccessfulWeatherResponse(WireMockServer server)
+    private static void ConfigureSuccessfulWeatherResponse(WireMockServer server, string location = "Tampa")
     {
         var providerResponse = WeatherApiForecastFixture.Create();
+
+        providerResponse.Location.Name = location;
 
         server
             .Given(
@@ -630,7 +923,7 @@ public sealed class WeatherEndpointTests
                     .WithPath("/v1/forecast.json")
                     .UsingGet()
                     .WithParam("key", "test-api-key")
-                    .WithParam("q", "Tampa")
+                    .WithParam("q", location)
                     .WithParam("days", "3"))
             .RespondWith(
                 Response.Create()
