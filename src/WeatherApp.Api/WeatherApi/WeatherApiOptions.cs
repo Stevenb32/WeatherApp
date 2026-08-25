@@ -9,4 +9,6 @@ public class WeatherApiOptions
     public string ApiKey { get; set; } = string.Empty;
 
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(10);
+
+    public TimeSpan CacheDuration { get; set; } = TimeSpan.FromMinutes(5);
 }
