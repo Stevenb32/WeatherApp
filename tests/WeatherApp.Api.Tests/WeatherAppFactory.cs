@@ -18,11 +18,17 @@ public sealed class WeatherAppFactory : WebApplicationFactory<Program>
 
     private readonly ISystemClock? _cacheClock;
 
+    private readonly int _weatherRateLimitPermitLimit;
+
+    private readonly TimeSpan _weatherRateLimitWindow;
+
     public WeatherAppFactory(
         string wireMockBaseUrl,
         TimeSpan? weatherApiTimeout = null,
         TimeSpan? weatherApiCacheDuration = null,
-        ISystemClock? cacheClock = null)
+        ISystemClock? cacheClock = null,
+        int? weatherRateLimitPermitLimit = null,
+        TimeSpan? weatherRateLimitWindow = null)
     {
         _wireMockBaseUrl = wireMockBaseUrl;
 
@@ -33,6 +39,12 @@ public sealed class WeatherAppFactory : WebApplicationFactory<Program>
             weatherApiCacheDuration ?? TimeSpan.FromMinutes(5);
 
         _cacheClock = cacheClock;
+
+        _weatherRateLimitPermitLimit =
+            weatherRateLimitPermitLimit ?? 1_000;
+
+        _weatherRateLimitWindow =
+            weatherRateLimitWindow ?? TimeSpan.FromMinutes(1);
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -50,7 +62,13 @@ public sealed class WeatherAppFactory : WebApplicationFactory<Program>
                     _weatherApiTimeout.ToString("c"),
 
                 ["WeatherApi:CacheDuration"] =
-                    _weatherApiCacheDuration.ToString("c")
+                    _weatherApiCacheDuration.ToString("c"),
+
+                ["WeatherRateLimit:PermitLimit"] =
+                    _weatherRateLimitPermitLimit.ToString(),
+
+                ["WeatherRateLimit:Window"] =
+                    _weatherRateLimitWindow.ToString("c")
             };
 
             configurationBuilder.AddInMemoryCollection(

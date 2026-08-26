@@ -1,6 +1,9 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
+using WeatherApp.Api.RateLimiting;
 using WeatherApp.Api.Weather;
 using WeatherApp.Api.WeatherApi;
 
@@ -33,7 +36,50 @@ builder.Services
         "WeatherApi:CacheDuration must be greater than zero.")
     .ValidateOnStart();
 
+builder.Services
+    .AddOptions<WeatherRateLimitOptions>()
+    .Bind(
+        builder.Configuration.GetSection(
+            WeatherRateLimitOptions.SectionName))
+    .Validate(
+        options => options.PermitLimit > 0,
+        "WeatherRateLimit:PermitLimit must be greater than zero.")
+    .Validate(
+        options => options.Window > TimeSpan.Zero,
+        "WeatherRateLimit:Window must be greater than zero.")
+    .ValidateOnStart();
+
 builder.Services.AddMemoryCache();
+
+builder.Services.AddRateLimiter(options =>
+{
+    var weatherRateLimitOptions = builder.Configuration
+        .GetRequiredSection(WeatherRateLimitOptions.SectionName)
+        .Get<WeatherRateLimitOptions>()
+        ?? throw new InvalidOperationException(
+            "WeatherRateLimit configuration is required.");
+
+    options.RejectionStatusCode =
+        StatusCodes.Status429TooManyRequests;
+
+    options.AddFixedWindowLimiter(
+        policyName: "weather",
+        fixedWindowOptions =>
+        {
+            fixedWindowOptions.PermitLimit =
+                weatherRateLimitOptions.PermitLimit;
+
+            fixedWindowOptions.Window =
+                weatherRateLimitOptions.Window;
+
+            fixedWindowOptions.QueueLimit = 0;
+
+            fixedWindowOptions.QueueProcessingOrder =
+                QueueProcessingOrder.OldestFirst;
+
+            fixedWindowOptions.AutoReplenishment = true;
+        });
+});
 
 builder.Services.AddHttpClient<WeatherApiClient>(
     (serviceProvider, httpClient) =>
@@ -50,6 +96,8 @@ builder.Services.AddHttpClient<WeatherApiClient>(
 var app = builder.Build();
 
 app.UseHttpsRedirection();
+
+app.UseRateLimiter();
 
 app.MapGet("/health", () => Results.Ok());
 
