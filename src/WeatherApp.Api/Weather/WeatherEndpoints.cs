@@ -10,7 +10,9 @@ public static class WeatherEndpoints
     public static IEndpointRouteBuilder MapWeatherEndpoints(
         this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/weather", GetWeatherAsync);
+        endpoints
+            .MapGet("/api/weather", GetWeatherAsync)
+            .RequireRateLimiting("weather");
 
         return endpoints;
     }

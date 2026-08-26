@@ -380,16 +380,115 @@ public sealed class WeatherEndpointTests
         server.LogEntries.Should().HaveCount(2);
     }
 
+    [Fact]
+    public async Task GetWeather_WhenRateLimitIsExceeded_ReturnsTooManyRequests()
+    {
+        using var server = WireMockServer.Start();
 
+        ConfigureSuccessfulWeatherResponse(server);
 
+        using var factory = new WeatherAppFactory(
+            server.Urls[0],
+            weatherRateLimitPermitLimit: 1,
+            weatherRateLimitWindow: TimeSpan.FromHours(1));
 
+        using var client = CreateApiClient(factory);
 
+        const string requestUrl =
+            "/api/weather?location=Tampa&units=imperial";
 
+        using var firstResponse = await client.GetAsync(requestUrl);
 
+        firstResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
+        using var secondResponse = await client.GetAsync(requestUrl);
 
+        secondResponse.StatusCode.Should()
+            .Be(HttpStatusCode.TooManyRequests);
+    }
 
+    [Fact]
+    public async Task GetHealth_WhenWeatherRateLimitIsExhausted_ReturnsOk()
+    {
+        using var server = WireMockServer.Start();
 
+        ConfigureSuccessfulWeatherResponse(server);
+
+        using var factory = new WeatherAppFactory(
+            server.Urls[0],
+            weatherRateLimitPermitLimit: 1,
+            weatherRateLimitWindow: TimeSpan.FromHours(1));
+
+        using var client = CreateApiClient(factory);
+
+        const string weatherRequestUrl =
+            "/api/weather?location=Tampa&units=imperial";
+
+        using var firstWeatherResponse =
+            await client.GetAsync(weatherRequestUrl);
+
+        firstWeatherResponse.StatusCode.Should()
+            .Be(HttpStatusCode.OK);
+
+        using var secondWeatherResponse =
+            await client.GetAsync(weatherRequestUrl);
+
+        secondWeatherResponse.StatusCode.Should()
+            .Be(HttpStatusCode.TooManyRequests);
+
+        using var healthResponse = await client.GetAsync("/health");
+
+        healthResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task GetWeather_WhenProviderReturnsTooManyRequests_ReturnsServiceUnavailable()
+    {
+        using var server = WireMockServer.Start();
+
+        server
+            .Given(
+                Request.Create()
+                    .WithPath("/v1/forecast.json")
+                    .UsingGet()
+                    .WithParam("key", "test-api-key")
+                    .WithParam("q", "Tampa")
+                    .WithParam("days", "3"))
+            .RespondWith(
+                Response.Create()
+                    .WithStatusCode(429)
+                    .WithHeader("Content-Type", "application/json")
+                    .WithBody(
+                        """
+                    {
+                      "error": {
+                        "code": 2007,
+                        "message": "API request quota exceeded."
+                      }
+                    }
+                    """));
+
+        using var factory = new WeatherAppFactory(server.Urls[0]);
+
+        using var client = CreateApiClient(factory);
+
+        using var response = await client.GetAsync(
+            "/api/weather?location=Tampa&units=imperial");
+
+        response.StatusCode.Should()
+            .Be(HttpStatusCode.ServiceUnavailable);
+
+        using var document = JsonDocument.Parse(
+            await response.Content.ReadAsStringAsync());
+
+        document.RootElement
+            .GetProperty("title")
+            .GetString()
+            .Should()
+            .Be("Weather provider unavailable");
+
+        server.LogEntries.Should().ContainSingle();
+    }
 
     [Theory]
     [InlineData("metric")]
