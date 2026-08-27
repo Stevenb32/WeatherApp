@@ -2,11 +2,13 @@
 
 WeatherApp is an in-progress full-stack weather application built as a portfolio and learning project focused on software development, QA automation, SDET practices, DevOps, and agentic engineering workflows.
 
-The backend uses an ASP.NET Core Minimal API to retrieve and process forecast data from [WeatherAPI](https://www.weatherapi.com/). A React and TypeScript frontend will be developed to present the weather data to users.
+The backend uses an ASP.NET Core Minimal API to retrieve and process forecast data from [WeatherAPI](https://www.weatherapi.com/). The frontend uses React, TypeScript, and Vite and is being developed incrementally to present that data to users.
 
 ## Project Status
 
 **Milestone 1 — API Foundation: Complete**
+
+**Milestone 2 — React MVP: In progress**
 
 The backend currently supports:
 
@@ -22,6 +24,15 @@ The backend currently supports:
 * A health-check endpoint that remains outside the weather rate limit
 * Error handling for invalid locations, provider failures, and timeouts
 * Integration testing with xUnit, FluentAssertions, and WireMock.Net
+
+The frontend foundation currently includes:
+
+* A minimal accessible Weather App shell
+* Tailwind CSS through its official Vite plugin
+* A same-origin local development proxy for relative `/api` requests
+* Component testing with Vitest, jsdom, and React Testing Library
+
+Weather search and forecast presentation are not implemented yet.
 
 ## API
 
@@ -52,7 +63,15 @@ GET /health
 
 The health endpoint is not affected by the weather endpoint’s rate limit.
 
-## Configuration
+## Local Development
+
+Requirements:
+
+* .NET 10 SDK
+* Node.js and npm
+* A WeatherAPI API key
+
+### One-time backend configuration
 
 Application defaults are stored in `src/WeatherApp.Api/appsettings.json`.
 
@@ -78,29 +97,56 @@ The WeatherAPI key is not stored in source control. Configure it with .NET User 
 dotnet user-secrets set "WeatherApi:ApiKey" "your-api-key" --project src/WeatherApp.Api
 ```
 
-## Run the API
+### Run the API and UI
 
-Requirements:
+The API and UI run in two separate terminals. Run both commands from the repository root unless the instructions change directories.
 
-* .NET 10 SDK
-* A WeatherAPI API key
-
-Restore and run the application:
+In the first terminal, start the API with its HTTPS launch profile:
 
 ```powershell
-dotnet restore
-dotnet run --project src/WeatherApp.Api
+dotnet run --project src/WeatherApp.Api --launch-profile https
 ```
 
-## Run the Tests
+The API listens at `https://localhost:7001`.
 
-Run the complete automated test suite:
+In the second terminal, install the frontend dependencies and start Vite:
 
 ```powershell
+cd src/WeatherApp.Ui
+npm install
+npm run dev
+```
+
+The UI is available at `http://localhost:5173`.
+
+During local development, the frontend uses relative paths such as `/api/weather`. Vite receives those requests on port `5173` and forwards them unchanged to the API at `https://localhost:7001`. The browser does not need a separate API base URL or a direct-development CORS policy, and the WeatherAPI key remains on the backend.
+
+## Verification
+
+### Backend
+
+Build the solution and run the backend tests from the repository root:
+
+```powershell
+dotnet build WeatherApp.slnx
 dotnet test WeatherApp.slnx
 ```
 
 The integration tests use WireMock.Net to simulate WeatherAPI responses without calling the real provider.
+
+### Frontend
+
+Run frontend commands from `src/WeatherApp.Ui`:
+
+```powershell
+npm test
+npm run test:watch
+npm run test:coverage
+npm run lint
+npm run build
+```
+
+`npm test` runs the component tests once and exits. `npm run test:watch` stays active and reruns tests as files change. `npm run test:coverage` generates V8 coverage without enforcing a numerical threshold.
 
 ## Planned Frontend MVP
 
@@ -123,9 +169,12 @@ The React and TypeScript frontend will support:
 * React
 * TypeScript
 * Vite
+* Tailwind CSS
+* Vitest
+* React Testing Library
 * xUnit
 * FluentAssertions
 * WireMock.Net
 * WeatherAPI
 
-Additional frontend development, automated testing, CI/CD, containerization, and production deployment capabilities will be introduced incrementally as the project develops.
+Additional frontend features, end-to-end testing, CI/CD, containerization, and production deployment capabilities will be introduced incrementally as the project develops.
