@@ -25,14 +25,18 @@ The backend currently supports:
 * Error handling for invalid locations, provider failures, and timeouts
 * Integration testing with xUnit, FluentAssertions, and WireMock.Net
 
-The frontend foundation currently includes:
+The frontend currently includes:
 
-* A minimal accessible Weather App shell
+* An accessible, responsive Weather App shell
+* City search with inline blank-input validation
+* Imperial and metric unit selection
+* Loading and general failure feedback
+* Current conditions with temperature, condition, humidity, and wind
 * Tailwind CSS through its official Vite plugin
 * A same-origin local development proxy for relative `/api` requests
 * Component testing with Vitest, jsdom, and React Testing Library
 
-Weather search and forecast presentation are not implemented yet.
+Hourly and daily forecast presentation and category-specific recovery are not implemented yet.
 
 ## API
 
