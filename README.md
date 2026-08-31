@@ -8,7 +8,7 @@ The backend uses an ASP.NET Core Minimal API to retrieve and process forecast da
 
 **Milestone 1 — API Foundation: Complete**
 
-**Milestone 2 — React MVP: In progress**
+**Milestone 2 — React MVP: Complete**
 
 The backend currently supports:
 
@@ -76,7 +76,30 @@ Requirements:
 * Node.js and npm
 * A WeatherAPI API key
 
+### Install dependencies
+
+Restore the backend dependencies from the repository root:
+
+```powershell
+dotnet restore WeatherApp.slnx
+```
+
+Install the frontend dependencies:
+
+```powershell
+cd src/WeatherApp.Ui
+npm install
+```
+
 ### One-time backend configuration
+
+Trust the ASP.NET Core HTTPS development certificate:
+
+```powershell
+dotnet dev-certs https --trust
+```
+
+Accept the operating-system trust prompt when it appears. This allows the browser and local development tools to trust the API's HTTPS endpoint.
 
 Application defaults are stored in `src/WeatherApp.Api/appsettings.json`.
 
@@ -114,11 +137,10 @@ dotnet run --project src/WeatherApp.Api --launch-profile https
 
 The API listens at `https://localhost:7001`.
 
-In the second terminal, install the frontend dependencies and start Vite:
+In the second terminal, start Vite:
 
 ```powershell
 cd src/WeatherApp.Ui
-npm install
 npm run dev
 ```
 
@@ -152,19 +174,6 @@ npm run build
 ```
 
 `npm test` runs the component tests once and exits. `npm run test:watch` stays active and reruns tests as files change. `npm run test:coverage` generates V8 coverage without enforcing a numerical threshold.
-
-## Planned Frontend MVP
-
-The React and TypeScript frontend will support:
-
-* Searching for a city
-* Displaying current weather
-* Displaying an hourly forecast
-* Displaying a 3-day forecast
-* Showing temperature, conditions, humidity, wind, and precipitation chance
-* Switching between °F and °C
-* Loading, location-not-found, and weather-provider-error states
-* Responsive desktop and mobile layouts
 
 ## Technology
 

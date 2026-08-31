@@ -201,7 +201,7 @@ describe('App', () => {
     expect(getWeatherMock).not.toHaveBeenCalled()
   })
 
-  it('shows loading with controls present and disabled until the request completes', async () => {
+  it('shows loading while keeping guarded controls focusable until the request completes', async () => {
     const user = userEvent.setup()
     const pendingRequest = createDeferred<WeatherResponse>()
     getWeatherMock.mockReturnValue(pendingRequest.promise)
@@ -216,15 +216,21 @@ describe('App', () => {
     )
     expect(screen.getByText('Loading weather…')).toBeVisible()
     expect(screen.getByLabelText('City')).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Search' })).toBeDisabled()
-    expect(
-      screen.getByRole('radio', {
-        name: 'Fahrenheit (imperial units)',
-      }),
-    ).toBeDisabled()
-    expect(
-      screen.getByRole('radio', { name: 'Celsius (metric units)' }),
-    ).toBeDisabled()
+    const searchButton = screen.getByRole('button', { name: 'Search' })
+    const imperialRadio = screen.getByRole('radio', {
+      name: 'Fahrenheit (imperial units)',
+    })
+    const metricRadio = screen.getByRole('radio', {
+      name: 'Celsius (metric units)',
+    })
+
+    expect(searchButton).not.toBeDisabled()
+    expect(searchButton).toHaveAttribute('aria-disabled', 'true')
+    expect(searchButton).toHaveFocus()
+    expect(imperialRadio).not.toBeDisabled()
+    expect(imperialRadio).toHaveAttribute('aria-disabled', 'true')
+    expect(metricRadio).not.toBeDisabled()
+    expect(metricRadio).toHaveAttribute('aria-disabled', 'true')
     expect(
       screen.getByRole('region', { name: 'Weather results' }),
     ).toHaveAttribute('aria-busy', 'true')
@@ -243,6 +249,7 @@ describe('App', () => {
     expect(
       screen.getByRole('region', { name: 'Weather results' }),
     ).toHaveAttribute('aria-busy', 'false')
+    expect(searchButton).toHaveFocus()
   })
 
   it('announces the resolved location without moving focus', async () => {
@@ -397,7 +404,8 @@ describe('App', () => {
     await submitCity(user)
 
     const searchButton = screen.getByRole('button', { name: 'Search' })
-    expect(searchButton).toBeDisabled()
+    expect(searchButton).not.toBeDisabled()
+    expect(searchButton).toHaveAttribute('aria-disabled', 'true')
 
     await user.click(searchButton)
 
@@ -450,9 +458,11 @@ describe('App', () => {
       within(imperialDailyRegion).getByText('Daily sunshine'),
     ).toBeVisible()
 
-    await user.click(
-      screen.getByRole('radio', { name: 'Celsius (metric units)' }),
-    )
+    const metricRadio = screen.getByRole('radio', {
+      name: 'Celsius (metric units)',
+    })
+
+    await user.click(metricRadio)
 
     expect(getWeatherMock).toHaveBeenNthCalledWith(2, 'Tampa', 'metric')
     expect(screen.getByRole('status')).toHaveTextContent(
@@ -468,6 +478,8 @@ describe('App', () => {
       screen.queryByRole('region', { name: 'Three-day forecast' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByText('Daily sunshine')).not.toBeInTheDocument()
+    expect(metricRadio).toHaveFocus()
+    expect(metricRadio).toHaveAttribute('aria-disabled', 'true')
 
     pendingMetricRequest.resolve(metricWeatherResponse)
 
@@ -505,6 +517,7 @@ describe('App', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'Weather loaded for Tampa.',
     )
+    expect(metricRadio).toHaveFocus()
   })
 
   it.each(errorCases)(
@@ -561,6 +574,7 @@ describe('App', () => {
 
     expect(getWeatherMock).toHaveBeenNthCalledWith(2, 'Tampa', 'metric')
     expect(cityInput).toHaveValue('Orlando')
+    expect(cityInput).toHaveFocus()
 
     const metricWeatherRegion = await screen.findByRole('region', {
       name: 'Current weather for Tampa, Florida, United States of America',
@@ -568,6 +582,7 @@ describe('App', () => {
 
     expect(within(metricWeatherRegion).getByText('31')).toBeVisible()
     expect(within(metricWeatherRegion).getByText('°C')).toBeVisible()
+    expect(cityInput).toHaveFocus()
   })
 
   it('uses the normal loading protection while Retry is pending', async () => {
@@ -585,6 +600,8 @@ describe('App', () => {
       name: 'Weather couldn’t be loaded',
     })
 
+    const cityInput = screen.getByLabelText('City')
+
     await user.click(screen.getByRole('button', { name: 'Retry' }))
 
     expect(getWeatherMock).toHaveBeenCalledTimes(2)
@@ -594,27 +611,31 @@ describe('App', () => {
       'Loading weather for Tampa.',
     )
     expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
+    expect(cityInput).toHaveFocus()
 
     const searchButton = screen.getByRole('button', { name: 'Search' })
-    expect(searchButton).toBeDisabled()
+    expect(searchButton).not.toBeDisabled()
+    expect(searchButton).toHaveAttribute('aria-disabled', 'true')
     expect(
       screen.getByRole('radio', { name: 'Fahrenheit (imperial units)' }),
-    ).toBeDisabled()
+    ).toHaveAttribute('aria-disabled', 'true')
     expect(
       screen.getByRole('radio', { name: 'Celsius (metric units)' }),
-    ).toBeDisabled()
+    ).toHaveAttribute('aria-disabled', 'true')
 
     await user.click(searchButton)
 
     expect(getWeatherMock).toHaveBeenCalledTimes(2)
+    expect(searchButton).toHaveFocus()
 
-    pendingRetry.resolve(imperialWeatherResponse)
+    pendingRetry.reject(new WeatherServiceError('provider-timeout'))
 
     expect(
       await screen.findByRole('heading', {
-        name: 'Current weather for Tampa, Florida, United States of America',
+        name: 'Weather took too long',
       }),
     ).toBeVisible()
+    expect(searchButton).toHaveFocus()
   })
 
   it('uses a newly submitted location as the next retry target', async () => {

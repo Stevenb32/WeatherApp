@@ -17,7 +17,7 @@ function CurrentWeather({ current, unitSystem }: CurrentWeatherProps) {
           <span className="mt-1 text-2xl font-medium text-slate-600 sm:text-3xl">{temperatureUnit}</span>
         </p>
 
-        <p className="text-lg font-medium text-slate-700 sm:pb-2">{current.condition}</p>
+        <p className="min-w-0 break-words text-lg font-medium text-slate-700 sm:pb-2">{current.condition}</p>
       </div>
 
       <dl className="mt-6 grid border-t border-slate-200 pt-5 sm:grid-cols-3 sm:divide-x sm:divide-slate-200">

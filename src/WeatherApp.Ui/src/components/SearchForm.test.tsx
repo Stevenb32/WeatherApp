@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import SearchForm from "./SearchForm.tsx";
 
@@ -8,7 +9,7 @@ describe("SearchForm", () => {
     const user = userEvent.setup();
     const onSearch = vi.fn();
 
-    render(<SearchForm isSubmitting={false} onSearch={onSearch} />);
+    render(<SearchForm cityInputRef={createRef()} isSubmitting={false} onSearch={onSearch} />);
 
     await user.type(screen.getByLabelText("City"), "Tampa");
     await user.click(screen.getByRole("button", { name: "Search" }));
@@ -21,7 +22,7 @@ describe("SearchForm", () => {
     const user = userEvent.setup();
     const onSearch = vi.fn();
 
-    render(<SearchForm isSubmitting={false} onSearch={onSearch} />);
+    render(<SearchForm cityInputRef={createRef()} isSubmitting={false} onSearch={onSearch} />);
 
     await user.type(screen.getByLabelText("City"), "Boston{Enter}");
 
@@ -33,7 +34,7 @@ describe("SearchForm", () => {
     const user = userEvent.setup();
     const onSearch = vi.fn();
 
-    render(<SearchForm isSubmitting={false} onSearch={onSearch} />);
+    render(<SearchForm cityInputRef={createRef()} isSubmitting={false} onSearch={onSearch} />);
 
     await user.type(screen.getByLabelText("City"), "   St. John's   ");
     await user.click(screen.getByRole("button", { name: "Search" }));
@@ -49,7 +50,7 @@ describe("SearchForm", () => {
     const user = userEvent.setup();
     const onSearch = vi.fn();
 
-    render(<SearchForm isSubmitting={false} onSearch={onSearch} />);
+    render(<SearchForm cityInputRef={createRef()} isSubmitting={false} onSearch={onSearch} />);
 
     const cityInput = screen.getByLabelText("City");
 
@@ -67,7 +68,7 @@ describe("SearchForm", () => {
     const user = userEvent.setup();
     const onSearch = vi.fn();
 
-    render(<SearchForm isSubmitting={false} onSearch={onSearch} />);
+    render(<SearchForm cityInputRef={createRef()} isSubmitting={false} onSearch={onSearch} />);
 
     const cityInput = screen.getByLabelText("City");
 
@@ -82,20 +83,26 @@ describe("SearchForm", () => {
     expect(onSearch).not.toHaveBeenCalled();
   });
 
-  it("prevents submission while a request is pending", async () => {
+  it("keeps Search focusable while preventing submission during a pending request", async () => {
     const user = userEvent.setup();
     const onSearch = vi.fn();
 
-    render(<SearchForm isSubmitting onSearch={onSearch} />);
+    render(<SearchForm cityInputRef={createRef()} isSubmitting onSearch={onSearch} />);
 
     await user.type(screen.getByLabelText("City"), "Tampa");
 
     const searchButton = screen.getByRole("button", { name: "Search" });
 
-    expect(searchButton).toBeDisabled();
+    expect(searchButton).not.toBeDisabled();
+    expect(searchButton).toHaveAttribute("aria-disabled", "true");
 
-    await user.click(searchButton);
+    await user.tab();
+
+    expect(searchButton).toHaveFocus();
+
+    await user.keyboard("{Enter}");
 
     expect(onSearch).not.toHaveBeenCalled();
+    expect(searchButton).toHaveFocus();
   });
 });

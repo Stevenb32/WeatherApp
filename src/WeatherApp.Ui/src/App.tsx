@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import SearchForm from "./components/SearchForm.tsx";
 import UnitSelector from "./components/UnitSelector.tsx";
 import WeatherErrorState from "./components/WeatherErrorState.tsx";
@@ -14,6 +14,7 @@ type WeatherRequestState =
   | { status: "error"; category: WeatherErrorCategory };
 
 function App() {
+  const cityInputRef = useRef<HTMLInputElement>(null);
   const [units, setUnits] = useState<WeatherUnitSystem>("imperial");
   const [lastSubmittedLocation, setLastSubmittedLocation] = useState<string | null>(null);
   const [requestState, setRequestState] = useState<WeatherRequestState>({ status: "idle" });
@@ -51,6 +52,7 @@ function App() {
       return;
     }
 
+    cityInputRef.current?.focus();
     void loadWeather(lastSubmittedLocation, units, `Loading weather for ${lastSubmittedLocation}.`);
   }
 
@@ -92,7 +94,7 @@ function App() {
           {announcement}
         </p>
 
-        <SearchForm isSubmitting={isLoading} onSearch={handleSearch} />
+        <SearchForm cityInputRef={cityInputRef} isSubmitting={isLoading} onSearch={handleSearch} />
 
         <section aria-label="Weather results" aria-busy={isLoading} className="min-h-56">
           {requestState.status === "success" || requestState.status === "error" ? (
