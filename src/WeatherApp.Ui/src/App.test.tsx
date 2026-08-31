@@ -33,7 +33,14 @@ const imperialWeatherResponse: WeatherResponse = {
     windSpeed: 8.1,
     windDirection: 'E',
   },
-  hourly: [],
+  hourly: [
+    {
+      time: '2026-08-28T12:00:00.000Z',
+      temperature: 80.6,
+      condition: 'Hourly sunshine',
+      precipitationChance: 10,
+    },
+  ],
   daily: [],
 }
 
@@ -45,6 +52,13 @@ const metricWeatherResponse: WeatherResponse = {
     temperature: 31,
     windSpeed: 13,
   },
+  hourly: [
+    {
+      ...imperialWeatherResponse.hourly[0],
+      temperature: 27,
+      condition: 'Metric hourly sunshine',
+    },
+  ],
 }
 
 const orlandoWeatherResponse: WeatherResponse = {
@@ -240,6 +254,20 @@ describe('App', () => {
     expect(within(currentWeatherRegion).getByText('70%')).toBeVisible()
     expect(within(currentWeatherRegion).getByText('8.1 mph')).toBeVisible()
     expect(within(currentWeatherRegion).getByText('E')).toBeVisible()
+
+    const hourlyForecastRegion = screen.getByRole('region', {
+      name: 'Next 24 hours',
+    })
+
+    expect(within(hourlyForecastRegion).getByText('08:00')).toBeVisible()
+    expect(within(hourlyForecastRegion).getByText('80.6')).toBeVisible()
+    expect(within(hourlyForecastRegion).getByText('°F')).toBeVisible()
+    expect(
+      within(hourlyForecastRegion).getByText('Hourly sunshine'),
+    ).toBeVisible()
+    expect(
+      within(hourlyForecastRegion).getByText('Precipitation chance: 10%'),
+    ).toBeVisible()
   })
 
   it('removes previous results while a later request is pending and after it fails', async () => {
@@ -259,6 +287,7 @@ describe('App', () => {
         name: 'Current weather for Tampa, Florida, United States of America',
       }),
     ).toBeVisible()
+    expect(screen.getByText('Hourly sunshine')).toBeVisible()
 
     await submitCity(user, 'Orlando')
 
@@ -271,6 +300,10 @@ describe('App', () => {
         name: 'Current weather for Tampa, Florida, United States of America',
       }),
     ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'Next 24 hours' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Hourly sunshine')).not.toBeInTheDocument()
 
     pendingRequest.reject(new WeatherServiceError('location-not-found'))
 
@@ -285,6 +318,10 @@ describe('App', () => {
         name: 'Current weather for Tampa, Florida, United States of America',
       }),
     ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'Next 24 hours' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Hourly sunshine')).not.toBeInTheDocument()
   })
 
   it('prevents duplicate submissions while a request is pending', async () => {
@@ -330,6 +367,16 @@ describe('App', () => {
       }),
     ).toBeVisible()
 
+    const imperialHourlyRegion = screen.getByRole('region', {
+      name: 'Next 24 hours',
+    })
+
+    expect(within(imperialHourlyRegion).getByText('80.6')).toBeVisible()
+    expect(within(imperialHourlyRegion).getByText('°F')).toBeVisible()
+    expect(
+      within(imperialHourlyRegion).getByText('Hourly sunshine'),
+    ).toBeVisible()
+
     await user.click(
       screen.getByRole('radio', { name: 'Celsius (metric units)' }),
     )
@@ -340,6 +387,10 @@ describe('App', () => {
     )
     expect(screen.getByText('Loading weather…')).toBeVisible()
     expect(screen.queryByText('87.8')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'Next 24 hours' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Hourly sunshine')).not.toBeInTheDocument()
 
     pendingMetricRequest.resolve(metricWeatherResponse)
 
@@ -350,6 +401,18 @@ describe('App', () => {
     expect(within(metricWeatherRegion).getByText('31')).toBeVisible()
     expect(within(metricWeatherRegion).getByText('°C')).toBeVisible()
     expect(within(metricWeatherRegion).getByText('13 km/h')).toBeVisible()
+
+    const metricHourlyRegion = screen.getByRole('region', {
+      name: 'Next 24 hours',
+    })
+
+    expect(within(metricHourlyRegion).getByText('27')).toBeVisible()
+    expect(within(metricHourlyRegion).getByText('°C')).toBeVisible()
+    expect(
+      within(metricHourlyRegion).getByText('Metric hourly sunshine'),
+    ).toBeVisible()
+    expect(screen.queryByText('80.6')).not.toBeInTheDocument()
+    expect(screen.queryByText('Hourly sunshine')).not.toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent(
       'Weather loaded for Tampa.',
     )

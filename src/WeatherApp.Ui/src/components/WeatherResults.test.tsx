@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { WeatherResponse } from "../types/weather.ts";
 import WeatherResults from "./WeatherResults.tsx";
@@ -18,7 +18,20 @@ const weatherResponse: WeatherResponse = {
     windSpeed: 8.1,
     windDirection: "E",
   },
-  hourly: [],
+  hourly: [
+    {
+      time: "2026-08-28T12:00:00.000Z",
+      temperature: 80.6,
+      condition: "Sunny intervals",
+      precipitationChance: 10,
+    },
+    {
+      time: "2026-08-28T13:00:00.000Z",
+      temperature: 81.4,
+      condition: "Light rain showers",
+      precipitationChance: 35,
+    },
+  ],
   daily: [],
 };
 
@@ -39,6 +52,30 @@ describe("WeatherResults", () => {
     ).toBeVisible();
     expect(screen.getByText("87.8")).toBeVisible();
     expect(screen.getByText("Partly cloudy")).toBeVisible();
+  });
+
+  it("renders the hourly forecast after current conditions with response context", () => {
+    render(<WeatherResults weather={weatherResponse} />);
+
+    const currentWeatherRegion = screen.getByRole("region", {
+      name: "Current weather for Tampa, Florida, United States of America",
+    });
+    const hourlySection = screen.getByRole("region", { name: "Next 24 hours" });
+    const hourlyEntries = within(hourlySection).getAllByRole("listitem");
+
+    expect(
+      currentWeatherRegion.compareDocumentPosition(hourlySection) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(hourlyEntries).toHaveLength(2);
+
+    const firstHourlyEntry = within(hourlyEntries[0]);
+
+    expect(firstHourlyEntry.getByText("08:00")).toBeVisible();
+    expect(firstHourlyEntry.getByText("80.6")).toBeVisible();
+    expect(firstHourlyEntry.getByText("°F")).toBeVisible();
+    expect(firstHourlyEntry.getByText("Sunny intervals")).toBeVisible();
+    expect(firstHourlyEntry.getByText("Precipitation chance: 10%")).toBeVisible();
   });
 
   it("omits empty location parts without leaving extra punctuation", () => {
