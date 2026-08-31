@@ -1,16 +1,16 @@
-import { useId, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { useId, useState, type ChangeEvent, type FormEvent, type RefObject } from "react";
 
 interface SearchFormProps {
+  cityInputRef: RefObject<HTMLInputElement | null>;
   isSubmitting: boolean;
   onSearch: (location: string) => void;
 }
 
-function SearchForm({ isSubmitting, onSearch }: SearchFormProps) {
+function SearchForm({ cityInputRef, isSubmitting, onSearch }: SearchFormProps) {
   const [city, setCity] = useState("");
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const cityInputId = useId();
   const validationMessageId = `${cityInputId}-error`;
-  const cityInputRef = useRef<HTMLInputElement>(null);
 
   function handleCityChange(event: ChangeEvent<HTMLInputElement>) {
     setCity(event.target.value);
@@ -56,13 +56,13 @@ function SearchForm({ isSubmitting, onSearch }: SearchFormProps) {
           onChange={handleCityChange}
           aria-describedby={validationMessage === null ? undefined : validationMessageId}
           aria-invalid={validationMessage !== null}
-          className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-base text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-sky-600 focus:ring-2 focus:ring-sky-600 focus:ring-offset-2 aria-invalid:border-rose-600 aria-invalid:focus:border-rose-600 aria-invalid:focus:ring-rose-600 motion-reduce:transition-none"
+          className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-500 bg-white px-4 py-2.5 text-base text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-sky-600 focus:ring-2 focus:ring-sky-600 focus:ring-offset-2 aria-invalid:border-rose-600 aria-invalid:focus:border-rose-600 aria-invalid:focus:ring-rose-600 motion-reduce:transition-none"
         />
 
         <button
           type="submit"
-          disabled={isSubmitting}
-          className="min-h-11 rounded-lg bg-sky-700 px-6 py-2.5 font-semibold text-white shadow-sm transition hover:bg-sky-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-sky-700 motion-reduce:transition-none"
+          aria-disabled={isSubmitting}
+          className="min-h-11 rounded-lg bg-sky-700 px-6 py-2.5 font-semibold text-white shadow-sm transition hover:bg-sky-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-700 focus-visible:ring-offset-2 aria-disabled:cursor-not-allowed aria-disabled:opacity-60 aria-disabled:hover:bg-sky-700 motion-reduce:transition-none"
         >
           Search
         </button>

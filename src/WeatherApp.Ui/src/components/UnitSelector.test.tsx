@@ -1,7 +1,15 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import type { WeatherUnitSystem } from "../types/weather.ts";
 import UnitSelector from "./UnitSelector.tsx";
+
+function ControlledUnitSelector() {
+  const [units, setUnits] = useState<WeatherUnitSystem>("imperial");
+
+  return <UnitSelector units={units} isDisabled={false} onChange={setUnits} />;
+}
 
 describe("UnitSelector", () => {
   it("renders an accessible group with visible unit symbols", () => {
@@ -48,6 +56,28 @@ describe("UnitSelector", () => {
     expect(onChange).toHaveBeenCalledWith("metric");
   });
 
+  it("supports native arrow-key navigation between radios", async () => {
+    const user = userEvent.setup();
+
+    render(<ControlledUnitSelector />);
+
+    const imperialRadio = screen.getByRole("radio", {
+      name: "Fahrenheit (imperial units)",
+    });
+    const metricRadio = screen.getByRole("radio", {
+      name: "Celsius (metric units)",
+    });
+
+    await user.tab();
+
+    expect(imperialRadio).toHaveFocus();
+
+    await user.keyboard("{ArrowRight}");
+
+    expect(metricRadio).toHaveFocus();
+    expect(metricRadio).toBeChecked();
+  });
+
   it("reflects a new controlled value after its parent rerenders", () => {
     const onChange = vi.fn();
     const { rerender } = render(<UnitSelector units="imperial" isDisabled={false} onChange={onChange} />);
@@ -62,7 +92,7 @@ describe("UnitSelector", () => {
     expect(screen.getByRole("radio", { name: "Celsius (metric units)" })).toBeChecked();
   });
 
-  it("prevents unit changes while disabled", async () => {
+  it("keeps pending radios focusable while preventing unit changes", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
 
@@ -75,11 +105,16 @@ describe("UnitSelector", () => {
       name: "Celsius (metric units)",
     });
 
-    expect(imperialRadio).toBeDisabled();
-    expect(metricRadio).toBeDisabled();
+    expect(imperialRadio).not.toBeDisabled();
+    expect(metricRadio).not.toBeDisabled();
+    expect(imperialRadio).toHaveAttribute("aria-disabled", "true");
+    expect(metricRadio).toHaveAttribute("aria-disabled", "true");
 
     await user.click(metricRadio);
 
     expect(onChange).not.toHaveBeenCalled();
+    expect(metricRadio).toHaveFocus();
+    expect(imperialRadio).toBeChecked();
+    expect(metricRadio).not.toBeChecked();
   });
 });

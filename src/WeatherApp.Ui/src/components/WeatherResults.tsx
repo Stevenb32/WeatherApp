@@ -20,7 +20,10 @@ function WeatherResults({ weather }: WeatherResultsProps) {
   return (
     <div className="rounded-3xl border border-sky-100 bg-white p-6 shadow-sm sm:p-8">
       <section aria-labelledby="current-weather-heading">
-        <h2 id="current-weather-heading" className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
+        <h2
+          id="current-weather-heading"
+          className="min-w-0 break-words text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl"
+        >
           <span className="sr-only">Current weather for</span> {resolvedLocation}
         </h2>
 
