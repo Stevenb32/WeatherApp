@@ -30,13 +30,14 @@ The frontend currently includes:
 * An accessible, responsive Weather App shell
 * City search with inline blank-input validation
 * Imperial and metric unit selection
-* Loading and general failure feedback
+* Loading feedback
+* Persistent, category-specific error messages with Retry recovery
 * Current conditions with temperature, condition, humidity, and wind
 * Tailwind CSS through its official Vite plugin
 * A same-origin local development proxy for relative `/api` requests
 * Component testing with Vitest, jsdom, and React Testing Library
 
-Hourly and daily forecast presentation and category-specific recovery are not implemented yet.
+Hourly and daily forecast presentation are not implemented yet.
 
 ## API
 

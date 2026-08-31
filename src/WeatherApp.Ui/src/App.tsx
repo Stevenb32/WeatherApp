@@ -1,15 +1,17 @@
 import { useState } from "react";
 import SearchForm from "./components/SearchForm.tsx";
 import UnitSelector from "./components/UnitSelector.tsx";
+import WeatherErrorState from "./components/WeatherErrorState.tsx";
 import WeatherResults from "./components/WeatherResults.tsx";
-import { getWeather } from "./services/weatherApi.ts";
+import { getWeather, WeatherServiceError } from "./services/weatherApi.ts";
+import type { WeatherErrorCategory } from "./services/weatherApi.ts";
 import type { WeatherResponse, WeatherUnitSystem } from "./types/weather.ts";
 
 type WeatherRequestState =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "success"; weather: WeatherResponse }
-  | { status: "error" };
+  | { status: "error"; category: WeatherErrorCategory };
 
 function App() {
   const [units, setUnits] = useState<WeatherUnitSystem>("imperial");
@@ -27,8 +29,10 @@ function App() {
       const weather = await getWeather(location, requestedUnits);
       setRequestState({ status: "success", weather });
       setAnnouncement(`Weather loaded for ${weather.location.name}.`);
-    } catch {
-      setRequestState({ status: "error" });
+    } catch (error: unknown) {
+      const category = error instanceof WeatherServiceError ? error.category : "unexpected-failure";
+
+      setRequestState({ status: "error", category });
       setAnnouncement("");
     }
   }
@@ -40,6 +44,14 @@ function App() {
 
     setLastSubmittedLocation(location);
     void loadWeather(location, units, `Loading weather for ${location}.`);
+  }
+
+  function handleRetry() {
+    if (isLoading || lastSubmittedLocation === null) {
+      return;
+    }
+
+    void loadWeather(lastSubmittedLocation, units, `Loading weather for ${lastSubmittedLocation}.`);
   }
 
   function handleUnitsChange(nextUnits: WeatherUnitSystem) {
@@ -63,11 +75,7 @@ function App() {
       case "success":
         return <WeatherResults weather={requestState.weather} />;
       case "error":
-        return (
-          <p role="alert" className="text-base font-medium text-rose-700">
-            We couldn’t load the weather. Please try another search.
-          </p>
-        );
+        return <WeatherErrorState category={requestState.category} onRetry={handleRetry} />;
     }
   }
 
@@ -87,7 +95,7 @@ function App() {
         <SearchForm isSubmitting={isLoading} onSearch={handleSearch} />
 
         <section aria-label="Weather results" aria-busy={isLoading} className="min-h-56">
-          {requestState.status === "success" ? (
+          {requestState.status === "success" || requestState.status === "error" ? (
             renderResults()
           ) : (
             <div className="flex min-h-56 items-center justify-center rounded-3xl border border-dashed border-sky-200 bg-white/70 p-6 text-center shadow-sm">
