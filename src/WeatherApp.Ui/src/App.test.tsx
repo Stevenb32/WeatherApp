@@ -41,7 +41,29 @@ const imperialWeatherResponse: WeatherResponse = {
       precipitationChance: 10,
     },
   ],
-  daily: [],
+  daily: [
+    {
+      date: '2026-08-28',
+      minimumTemperature: 72.25,
+      maximumTemperature: 92.75,
+      condition: 'Daily sunshine',
+      precipitationChance: 15,
+    },
+    {
+      date: '2026-08-29',
+      minimumTemperature: 70.5,
+      maximumTemperature: 88.25,
+      condition: 'Daily showers',
+      precipitationChance: 55,
+    },
+    {
+      date: '2026-08-30',
+      minimumTemperature: 68.75,
+      maximumTemperature: 84.5,
+      condition: 'Daily clouds',
+      precipitationChance: 35,
+    },
+  ],
 }
 
 const metricWeatherResponse: WeatherResponse = {
@@ -57,6 +79,26 @@ const metricWeatherResponse: WeatherResponse = {
       ...imperialWeatherResponse.hourly[0],
       temperature: 27,
       condition: 'Metric hourly sunshine',
+    },
+  ],
+  daily: [
+    {
+      ...imperialWeatherResponse.daily[0],
+      minimumTemperature: 22.25,
+      maximumTemperature: 33.75,
+      condition: 'Metric daily sunshine',
+    },
+    {
+      ...imperialWeatherResponse.daily[1],
+      minimumTemperature: 21.5,
+      maximumTemperature: 31.25,
+      condition: 'Metric daily showers',
+    },
+    {
+      ...imperialWeatherResponse.daily[2],
+      minimumTemperature: 20.75,
+      maximumTemperature: 29.5,
+      condition: 'Metric daily clouds',
     },
   ],
 }
@@ -268,6 +310,18 @@ describe('App', () => {
     expect(
       within(hourlyForecastRegion).getByText('Precipitation chance: 10%'),
     ).toBeVisible()
+
+    const dailyForecastRegion = screen.getByRole('region', {
+      name: 'Three-day forecast',
+    })
+
+    expect(within(dailyForecastRegion).getByText('72.25')).toBeVisible()
+    expect(within(dailyForecastRegion).getByText('92.75')).toBeVisible()
+    expect(within(dailyForecastRegion).getAllByText('°F')).toHaveLength(6)
+    expect(
+      within(dailyForecastRegion).getByText('Daily sunshine'),
+    ).toBeVisible()
+    expect(within(dailyForecastRegion).getByText('15%')).toBeVisible()
   })
 
   it('removes previous results while a later request is pending and after it fails', async () => {
@@ -288,6 +342,7 @@ describe('App', () => {
       }),
     ).toBeVisible()
     expect(screen.getByText('Hourly sunshine')).toBeVisible()
+    expect(screen.getByText('Daily sunshine')).toBeVisible()
 
     await submitCity(user, 'Orlando')
 
@@ -304,6 +359,10 @@ describe('App', () => {
       screen.queryByRole('region', { name: 'Next 24 hours' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByText('Hourly sunshine')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'Three-day forecast' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Daily sunshine')).not.toBeInTheDocument()
 
     pendingRequest.reject(new WeatherServiceError('location-not-found'))
 
@@ -322,6 +381,10 @@ describe('App', () => {
       screen.queryByRole('region', { name: 'Next 24 hours' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByText('Hourly sunshine')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'Three-day forecast' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Daily sunshine')).not.toBeInTheDocument()
   })
 
   it('prevents duplicate submissions while a request is pending', async () => {
@@ -377,6 +440,16 @@ describe('App', () => {
       within(imperialHourlyRegion).getByText('Hourly sunshine'),
     ).toBeVisible()
 
+    const imperialDailyRegion = screen.getByRole('region', {
+      name: 'Three-day forecast',
+    })
+
+    expect(within(imperialDailyRegion).getByText('92.75')).toBeVisible()
+    expect(within(imperialDailyRegion).getAllByText('°F')).toHaveLength(6)
+    expect(
+      within(imperialDailyRegion).getByText('Daily sunshine'),
+    ).toBeVisible()
+
     await user.click(
       screen.getByRole('radio', { name: 'Celsius (metric units)' }),
     )
@@ -391,6 +464,10 @@ describe('App', () => {
       screen.queryByRole('region', { name: 'Next 24 hours' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByText('Hourly sunshine')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'Three-day forecast' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Daily sunshine')).not.toBeInTheDocument()
 
     pendingMetricRequest.resolve(metricWeatherResponse)
 
@@ -411,8 +488,20 @@ describe('App', () => {
     expect(
       within(metricHourlyRegion).getByText('Metric hourly sunshine'),
     ).toBeVisible()
+
+    const metricDailyRegion = screen.getByRole('region', {
+      name: 'Three-day forecast',
+    })
+
+    expect(within(metricDailyRegion).getByText('33.75')).toBeVisible()
+    expect(within(metricDailyRegion).getAllByText('°C')).toHaveLength(6)
+    expect(
+      within(metricDailyRegion).getByText('Metric daily sunshine'),
+    ).toBeVisible()
     expect(screen.queryByText('80.6')).not.toBeInTheDocument()
     expect(screen.queryByText('Hourly sunshine')).not.toBeInTheDocument()
+    expect(screen.queryByText('92.75')).not.toBeInTheDocument()
+    expect(screen.queryByText('Daily sunshine')).not.toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent(
       'Weather loaded for Tampa.',
     )
