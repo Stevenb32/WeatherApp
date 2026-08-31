@@ -32,7 +32,29 @@ const weatherResponse: WeatherResponse = {
       precipitationChance: 35,
     },
   ],
-  daily: [],
+  daily: [
+    {
+      date: "2026-08-28",
+      minimumTemperature: 72.5,
+      maximumTemperature: 91.75,
+      condition: "Daily sunshine",
+      precipitationChance: 15,
+    },
+    {
+      date: "2026-08-29",
+      minimumTemperature: 70.25,
+      maximumTemperature: 88.5,
+      condition: "Afternoon showers",
+      precipitationChance: 50,
+    },
+    {
+      date: "2026-08-30",
+      minimumTemperature: 68.75,
+      maximumTemperature: 84.25,
+      condition: "Cloudy and breezy",
+      precipitationChance: 30,
+    },
+  ],
 };
 
 describe("WeatherResults", () => {
@@ -76,6 +98,21 @@ describe("WeatherResults", () => {
     expect(firstHourlyEntry.getByText("°F")).toBeVisible();
     expect(firstHourlyEntry.getByText("Sunny intervals")).toBeVisible();
     expect(firstHourlyEntry.getByText("Precipitation chance: 10%")).toBeVisible();
+  });
+
+  it("renders the three-day forecast after the hourly forecast", () => {
+    render(<WeatherResults weather={weatherResponse} />);
+
+    const hourlySection = screen.getByRole("region", { name: "Next 24 hours" });
+    const dailySection = screen.getByRole("region", { name: "Three-day forecast" });
+    const dailyEntries = within(dailySection).getAllByRole("listitem");
+
+    expect(
+      hourlySection.compareDocumentPosition(dailySection) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(dailyEntries).toHaveLength(3);
+    expect(within(dailyEntries[0]).getByText("Daily sunshine")).toBeVisible();
+    expect(within(dailyEntries[2]).getByText("Cloudy and breezy")).toBeVisible();
   });
 
   it("omits empty location parts without leaving extra punctuation", () => {

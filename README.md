@@ -34,11 +34,10 @@ The frontend currently includes:
 * Persistent, category-specific error messages with Retry recovery
 * Current conditions with temperature, condition, humidity, and wind
 * A keyboard-accessible, horizontally scrollable next-24-hours forecast
+* A responsive three-day forecast with daily temperature ranges and precipitation chance
 * Tailwind CSS through its official Vite plugin
 * A same-origin local development proxy for relative `/api` requests
 * Component testing with Vitest, jsdom, and React Testing Library
-
-Three-day forecast presentation is not implemented yet.
 
 ## API
 
