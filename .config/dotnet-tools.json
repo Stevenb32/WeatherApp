@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "dotnet-wiremock": {
+      "version": "2.15.0",
+      "commands": [
+        "dotnet-wiremock"
+      ],
+      "rollForward": true
+    }
+  }
+}

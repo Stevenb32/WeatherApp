@@ -9,6 +9,12 @@ using WeatherApp.Api.WeatherApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
+const string e2eEnvironmentName = "E2E";
+const string e2eWeatherApiBaseUrl = "http://127.0.0.1:9090/v1/";
+
+var isE2eEnvironment =
+    builder.Environment.IsEnvironment(e2eEnvironmentName);
+
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.Converters.Add(
@@ -28,6 +34,15 @@ builder.Services
     .Validate(
         options => !string.IsNullOrWhiteSpace(options.ApiKey),
         "WeatherApi:ApiKey is required.")
+    .Validate(
+        options =>
+            !isE2eEnvironment ||
+            string.Equals(
+                options.BaseUrl,
+                e2eWeatherApiBaseUrl,
+                StringComparison.Ordinal),
+        $"WeatherApi:BaseUrl must be {e2eWeatherApiBaseUrl} " +
+        $"when ASPNETCORE_ENVIRONMENT is {e2eEnvironmentName}.")
     .Validate(
         options => options.Timeout > TimeSpan.Zero,
         "WeatherApi:Timeout must be greater than zero.")
@@ -95,7 +110,10 @@ builder.Services.AddHttpClient<WeatherApiClient>(
 
 var app = builder.Build();
 
-app.UseHttpsRedirection();
+if (!isE2eEnvironment)
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseRateLimiter();
 
