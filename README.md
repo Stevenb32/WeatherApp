@@ -72,8 +72,9 @@ The health endpoint is not affected by the weather endpoint’s rate limit.
 
 Requirements:
 
-* .NET 10 SDK
-* Node.js and npm
+* .NET SDK 10.0.303, pinned by `global.json`
+* Node.js 24.20.0, pinned by `.node-version`
+* npm, using the checked-in `package-lock.json`
 * A WeatherAPI API key
 
 ### Install dependencies
@@ -81,14 +82,15 @@ Requirements:
 Restore the backend dependencies from the repository root:
 
 ```powershell
+dotnet tool restore
 dotnet restore WeatherApp.slnx
 ```
 
-Install the frontend dependencies:
+Install the frontend dependencies exactly as recorded in the lockfile:
 
 ```powershell
 cd src/WeatherApp.Ui
-npm install
+npm ci
 ```
 
 ### One-time backend configuration
@@ -148,6 +150,96 @@ The UI is available at `http://localhost:5173`.
 
 During local development, the frontend uses relative paths such as `/api/weather`. Vite receives those requests on port `5173` and forwards them unchanged to the API at `https://localhost:7001`. The browser does not need a separate API base URL or a direct-development CORS policy, and the WeatherAPI key remains on the backend.
 
+## Deterministic Full-Stack Test Environment
+
+The repository includes a shared environment for automated and manual full-stack testing. It does not use the real WeatherAPI, the internet, or a WeatherAPI credential:
+
+```text
+Vite production preview :4173
+          | relative /api proxy
+          v
+Weather App API :5100
+          | typed HttpClient
+          v
+Standalone WireMock :9090
+```
+
+All three services bind to fixed loopback addresses. Startup fails if any required port is occupied; the runner never chooses a different port.
+
+### Restore once
+
+From the repository root:
+
+```powershell
+dotnet tool restore
+dotnet restore WeatherApp.slnx
+
+cd src/WeatherApp.Ui
+npm ci
+cd ../..
+```
+
+The local tool manifest pins standalone WireMock to version 2.15.0. The manifest allows its .NET 8 target framework to roll forward to the repository's pinned .NET 10 runtime.
+
+### Build, start, verify, and stop
+
+Run the complete smoke verification from the repository root:
+
+```powershell
+node scripts/test-environment.mjs verify
+```
+
+This command validates the pinned runtimes and provider isolation, builds the API in Release configuration, builds the React production output, starts all three processes, performs bounded readiness checks, exercises the shared fixtures through the real API and preview proxy, and always tears the processes down. Successful cleanup is not assumed: the runner confirms that ports `9090`, `5100`, and `4173` are released.
+
+Keep the same environment running for manual use or a later test suite:
+
+```powershell
+node scripts/test-environment.mjs serve
+```
+
+The available addresses are:
+
+| Service | Address |
+| --- | --- |
+| Production UI preview | `http://127.0.0.1:4173` |
+| Weather App API | `http://127.0.0.1:5100` |
+| WireMock admin API | `http://127.0.0.1:9090/__admin` |
+
+Press `Ctrl+C` in the runner terminal to stop the complete environment. Vite preview serves built test output here; it is not production deployment hosting.
+
+### Shared fixture selectors
+
+Search for these exact locations through `/api/weather` or the UI:
+
+| Location | Deterministic behavior |
+| --- | --- |
+| `Tampa` | Fixed three-day success data with Celsius/Fahrenheit and kph/mph values |
+| `NotARealPlace` | Provider location error mapped to public `404 ProblemDetails` |
+| `ProviderFailure` | Provider failure mapped to public `503 ProblemDetails` |
+| `RetryRecovery` | First provider call fails; the second succeeds |
+| `LongContent` | Success data with deliberately long location and condition text |
+
+Before a stateful suite or manual retry check, reset both request history and scenario state:
+
+```powershell
+Invoke-RestMethod -Method Post http://127.0.0.1:9090/__admin/requests/reset
+Invoke-RestMethod -Method Post http://127.0.0.1:9090/__admin/scenarios/reset
+```
+
+The checked-in `E2E` API environment accepts only `http://127.0.0.1:9090/v1/` as its provider base address and uses the public placeholder key expected by the mappings. An E2E override to another provider address fails API startup. Normal Development and Production configuration continue to use the real WeatherAPI settings and are unchanged.
+
+Later Postman and Playwright suites should start this environment with `serve`, reset WireMock before stateful scenarios, and consume the fixed API/UI addresses instead of creating separate providers or servers.
+
+For lifecycle diagnostics, the verifier also supports deliberate failures. These commands are expected to exit unsuccessfully after releasing all managed ports:
+
+```powershell
+node scripts/test-environment.mjs verify --simulate-failure-after-ready
+node scripts/test-environment.mjs verify --simulate-readiness-timeout=api
+node scripts/test-environment.mjs verify --simulate-unexpected-child-exit=api
+```
+
+The unexpected-child-exit check stops the API after readiness and exercises the same service supervision used by `serve`. The runner must identify the API exit, stop WireMock and Vite preview, and confirm that all three fixed ports were released.
+
 ## Verification
 
 ### Backend
@@ -175,6 +267,16 @@ npm run build
 
 `npm test` runs the component tests once and exits. `npm run test:watch` stays active and reruns tests as files change. `npm run test:coverage` generates V8 coverage without enforcing a numerical threshold.
 
+### Full stack
+
+Run the deterministic full-stack smoke contract from the repository root:
+
+```powershell
+node scripts/test-environment.mjs verify
+```
+
+Readiness polling is bounded and is used only to wait for processes. Smoke assertions have zero automatic retries.
+
 ## Technology
 
 * .NET 10
@@ -189,6 +291,7 @@ npm run build
 * xUnit
 * FluentAssertions
 * WireMock.Net
+* Standalone WireMock
 * WeatherAPI
 
-Additional frontend features, end-to-end testing, CI/CD, containerization, and production deployment capabilities will be introduced incrementally as the project develops.
+Postman API automation, Playwright browser suites, CI/CD, containerization, and production deployment capabilities will be introduced incrementally as the project develops.

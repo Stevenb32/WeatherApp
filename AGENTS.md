@@ -52,19 +52,26 @@ The current high-level repository structure is:
 
 ```text
 WeatherApp/
+├── .config/
+│   └── dotnet-tools.json
+├── scripts/
+│   └── test-environment.mjs
 ├── src/
 │   ├── WeatherApp.Api/
 │   └── WeatherApp.Ui/
 ├── tests/
+│   ├── TestEnvironment/
 │   └── WeatherApp.Api.Tests/
+├── .node-version
 ├── .env.example
 ├── .gitignore
 ├── AGENTS.md
+├── global.json
 ├── README.md
 └── WeatherApp.slnx
 ```
 
-Milestone 3 will introduce additional test and CI infrastructure through its individual GitHub Issues.
+Milestone 3 has introduced a shared deterministic full-stack test environment. Additional test and CI infrastructure will be added through its individual GitHub Issues.
 
 Do not create planned folders or projects before the issue that requires them.
 
@@ -107,6 +114,12 @@ The backend test suite uses tools including:
 * WireMock.Net
 
 Tests should verify meaningful application behavior and important boundaries rather than maximizing test count.
+
+### `tests/TestEnvironment`
+
+Repository-owned standalone WireMock mappings and fixed provider responses for deterministic full-stack testing.
+
+Use `scripts/test-environment.mjs` to build, start, verify, and stop the fixed WireMock/API/Vite-preview process stack. Later full-stack suites should consume this environment instead of creating a separate provider boundary.
 
 ---
 
@@ -513,6 +526,8 @@ The following are outside Milestone 3 unless a later approved issue explicitly c
 
 Run commands from the repository root unless otherwise noted.
 
+The repository pins .NET SDK `10.0.303` in `global.json`, Node.js `24.20.0` in `.node-version`, and standalone WireMock `2.15.0` in the local .NET tool manifest. Restore dependencies with `dotnet tool restore`, `dotnet restore`, and `npm ci` before verification.
+
 ## Backend
 
 ### Restore
@@ -588,6 +603,22 @@ npm run lint
 ```powershell
 npm run build
 ```
+
+## Deterministic Full Stack
+
+Run the self-contained smoke contract from the repository root:
+
+```powershell
+node scripts/test-environment.mjs verify
+```
+
+Keep the same fixed environment running for manual verification or a later Postman/Playwright suite:
+
+```powershell
+node scripts/test-environment.mjs serve
+```
+
+The fixed addresses are WireMock at `127.0.0.1:9090`, the API at `127.0.0.1:5100`, and Vite production preview at `127.0.0.1:4173`. The runner must fail on port conflicts, use bounded readiness polling, and release all process trees and ports on every exit path.
 
 When a change affects a project, run the relevant build, lint, and test commands before considering the work complete.
 

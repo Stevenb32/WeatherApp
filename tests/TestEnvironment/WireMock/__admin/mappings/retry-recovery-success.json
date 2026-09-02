@@ -1,0 +1,55 @@
+{
+  "Title": "Retry recovery succeeds on the second provider call",
+  "Priority": 5,
+  "Scenario": "Retry recovery",
+  "WhenStateIs": "Recovered",
+  "Request": {
+    "Path": {
+      "Matchers": [
+        {
+          "Name": "ExactMatcher",
+          "Pattern": "/v1/forecast.json"
+        }
+      ]
+    },
+    "Methods": [
+      "GET"
+    ],
+    "Params": [
+      {
+        "Name": "key",
+        "Matchers": [
+          {
+            "Name": "ExactMatcher",
+            "Pattern": "weatherapp-e2e-placeholder"
+          }
+        ]
+      },
+      {
+        "Name": "q",
+        "Matchers": [
+          {
+            "Name": "ExactMatcher",
+            "Pattern": "RetryRecovery"
+          }
+        ]
+      },
+      {
+        "Name": "days",
+        "Matchers": [
+          {
+            "Name": "ExactMatcher",
+            "Pattern": "3"
+          }
+        ]
+      }
+    ]
+  },
+  "Response": {
+    "StatusCode": 200,
+    "Headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "BodyAsFile": "responses/tampa-success.json"
+  }
+}

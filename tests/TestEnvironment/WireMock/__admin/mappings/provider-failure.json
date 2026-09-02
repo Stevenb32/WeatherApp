@@ -1,0 +1,53 @@
+{
+  "Title": "Provider failure is deterministic",
+  "Priority": 10,
+  "Request": {
+    "Path": {
+      "Matchers": [
+        {
+          "Name": "ExactMatcher",
+          "Pattern": "/v1/forecast.json"
+        }
+      ]
+    },
+    "Methods": [
+      "GET"
+    ],
+    "Params": [
+      {
+        "Name": "key",
+        "Matchers": [
+          {
+            "Name": "ExactMatcher",
+            "Pattern": "weatherapp-e2e-placeholder"
+          }
+        ]
+      },
+      {
+        "Name": "q",
+        "Matchers": [
+          {
+            "Name": "ExactMatcher",
+            "Pattern": "ProviderFailure"
+          }
+        ]
+      },
+      {
+        "Name": "days",
+        "Matchers": [
+          {
+            "Name": "ExactMatcher",
+            "Pattern": "3"
+          }
+        ]
+      }
+    ]
+  },
+  "Response": {
+    "StatusCode": 500,
+    "Headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "BodyAsFile": "responses/provider-failure.json"
+  }
+}

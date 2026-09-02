@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": 9999,
+    "message": "Deterministic provider failure."
+  }
+}

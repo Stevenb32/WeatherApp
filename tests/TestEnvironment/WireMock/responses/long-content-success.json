@@ -1,0 +1,106 @@
+{
+  "location": {
+    "name": "The Long Coastal Municipality of North Weather Harbor",
+    "region": "The Extended Metropolitan Weather Observation District",
+    "country": "United States of America",
+    "tz_id": "America/New_York",
+    "localtime_epoch": 1787270400
+  },
+  "current": {
+    "temp_c": 31.0,
+    "temp_f": 87.8,
+    "condition": {
+      "text": "Patchy light rain with thunder expected throughout the afternoon",
+      "icon": "//cdn.weatherapp.test/long-condition.png",
+      "code": 1273
+    },
+    "humidity": 70,
+    "wind_mph": 8.1,
+    "wind_kph": 13.0,
+    "wind_dir": "ENE"
+  },
+  "forecast": {
+    "forecastday": [
+      {
+        "date": "2026-08-20",
+        "date_epoch": 1787198400,
+        "day": {
+          "maxtemp_c": 33.0,
+          "maxtemp_f": 91.4,
+          "mintemp_c": 25.0,
+          "mintemp_f": 77.0,
+          "condition": {
+            "text": "Patchy light rain with thunder expected throughout the afternoon",
+            "icon": "//cdn.weatherapp.test/long-condition.png",
+            "code": 1273
+          },
+          "daily_chance_of_rain": 70,
+          "daily_chance_of_snow": 0
+        },
+        "hour": [
+          { "time_epoch": 1787274000, "time": "2026-08-20 21:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787277600, "time": "2026-08-20 22:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787281200, "time": "2026-08-20 23:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 }
+        ]
+      },
+      {
+        "date": "2026-08-21",
+        "date_epoch": 1787284800,
+        "day": {
+          "maxtemp_c": 33.0,
+          "maxtemp_f": 91.4,
+          "mintemp_c": 25.0,
+          "mintemp_f": 77.0,
+          "condition": {
+            "text": "Patchy light rain with thunder expected throughout the afternoon",
+            "icon": "//cdn.weatherapp.test/long-condition.png",
+            "code": 1273
+          },
+          "daily_chance_of_rain": 70,
+          "daily_chance_of_snow": 0
+        },
+        "hour": [
+          { "time_epoch": 1787284800, "time": "2026-08-21 00:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787288400, "time": "2026-08-21 01:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787292000, "time": "2026-08-21 02:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787295600, "time": "2026-08-21 03:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787299200, "time": "2026-08-21 04:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787302800, "time": "2026-08-21 05:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787306400, "time": "2026-08-21 06:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787310000, "time": "2026-08-21 07:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787313600, "time": "2026-08-21 08:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787317200, "time": "2026-08-21 09:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787320800, "time": "2026-08-21 10:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787324400, "time": "2026-08-21 11:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787328000, "time": "2026-08-21 12:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787331600, "time": "2026-08-21 13:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787335200, "time": "2026-08-21 14:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787338800, "time": "2026-08-21 15:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787342400, "time": "2026-08-21 16:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787346000, "time": "2026-08-21 17:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787349600, "time": "2026-08-21 18:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787353200, "time": "2026-08-21 19:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 },
+          { "time_epoch": 1787356800, "time": "2026-08-21 20:00", "temp_c": 27.0, "temp_f": 80.6, "condition": { "text": "Patchy light rain with thunder expected throughout the afternoon", "icon": "//cdn.weatherapp.test/long-condition.png", "code": 1273 }, "chance_of_rain": 70, "chance_of_snow": 0 }
+        ]
+      },
+      {
+        "date": "2026-08-22",
+        "date_epoch": 1787371200,
+        "day": {
+          "maxtemp_c": 33.0,
+          "maxtemp_f": 91.4,
+          "mintemp_c": 25.0,
+          "mintemp_f": 77.0,
+          "condition": {
+            "text": "Patchy light rain with thunder expected throughout the afternoon",
+            "icon": "//cdn.weatherapp.test/long-condition.png",
+            "code": 1273
+          },
+          "daily_chance_of_rain": 70,
+          "daily_chance_of_snow": 0
+        },
+        "hour": []
+      }
+    ]
+  }
+}
