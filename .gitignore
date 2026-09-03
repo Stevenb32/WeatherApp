@@ -3,6 +3,7 @@ obj/
 node_modules/
 dist/
 coverage/
+tests/WeatherApp.Postman/reports/
 
 .env
 .env.*

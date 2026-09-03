@@ -10,6 +10,8 @@ The backend uses an ASP.NET Core Minimal API to retrieve and process forecast da
 
 **Milestone 2 — React MVP: Complete**
 
+**Milestone 3 — Automated Quality Gates and CI: In progress**
+
 The backend currently supports:
 
 * WeatherAPI integration through a typed `HttpClient`
@@ -24,6 +26,7 @@ The backend currently supports:
 * A health-check endpoint that remains outside the weather rate limit
 * Error handling for invalid locations, provider failures, and timeouts
 * Integration testing with xUnit, FluentAssertions, and WireMock.Net
+* Black-box public API testing with Postman CLI
 
 The frontend currently includes:
 
@@ -75,6 +78,7 @@ Requirements:
 * .NET SDK 10.0.303, pinned by `global.json`
 * Node.js 24.20.0, pinned by `.node-version`
 * npm, using the checked-in `package-lock.json`
+* Postman CLI, available as `postman` on `PATH`, for the API test suite
 * A WeatherAPI API key
 
 ### Install dependencies
@@ -191,7 +195,8 @@ node scripts/test-environment.mjs verify
 
 This command validates the pinned runtimes and provider isolation, builds the API in Release configuration, builds the React production output, starts all three processes, performs bounded readiness checks, exercises the shared fixtures through the real API and preview proxy, and always tears the processes down. Successful cleanup is not assumed: the runner confirms that ports `9090`, `5100`, and `4173` are released.
 
-Keep the same environment running for manual use or a later test suite:
+Keep the same environment running for manual use, the Postman API suite, or a
+future browser test suite:
 
 ```powershell
 node scripts/test-environment.mjs serve
@@ -228,7 +233,11 @@ Invoke-RestMethod -Method Post http://127.0.0.1:9090/__admin/scenarios/reset
 
 The checked-in `E2E` API environment accepts only `http://127.0.0.1:9090/v1/` as its provider base address and uses the public placeholder key expected by the mappings. An E2E override to another provider address fails API startup. Normal Development and Production configuration continue to use the real WeatherAPI settings and are unchanged.
 
-Later Postman and Playwright suites should start this environment with `serve`, reset WireMock before stateful scenarios, and consume the fixed API/UI addresses instead of creating separate providers or servers.
+The Postman CLI suite starts from this environment's fixed API address and uses
+the repository-owned fixture selectors. See the
+[Postman API test instructions](tests/WeatherApp.Postman/README.md) for the
+collection workflow. Future browser suites should consume the same environment
+instead of creating separate providers or servers.
 
 For lifecycle diagnostics, the verifier also supports deliberate failures. These commands are expected to exit unsuccessfully after releasing all managed ports:
 
@@ -267,6 +276,36 @@ npm run build
 
 `npm test` runs the component tests once and exits. `npm run test:watch` stays active and reruns tests as files change. `npm run test:coverage` generates V8 coverage without enforcing a numerical threshold.
 
+### Postman API
+
+Start the deterministic environment from the repository root in one terminal:
+
+```powershell
+node scripts/test-environment.mjs serve
+```
+
+After the environment reports that it is ready, run the complete black-box API
+suite from a second terminal:
+
+```powershell
+postman collection run `
+  tests/WeatherApp.Postman/WeatherApp.postman_collection.json `
+  --environment tests/WeatherApp.Postman/WeatherApp.local.postman_environment.json `
+  --reporters "cli,junit,html" `
+  --reporter-junit-export tests/WeatherApp.Postman/reports/postman-results.xml `
+  --reporter-html-export tests/WeatherApp.Postman/reports/postman-report.html `
+  --timeout 30000 `
+  --timeout-request 5000 `
+  --timeout-script 5000 `
+  --color off
+```
+
+Press Ctrl+C in the environment terminal after the run. The generated reports
+are written beneath `tests/WeatherApp.Postman/reports/` and are ignored by Git.
+The suite runs from local JSON files without a Postman login or Postman API key.
+See the [suite README](tests/WeatherApp.Postman/README.md) for focused runs and
+report details.
+
 ### Full stack
 
 Run the deterministic full-stack smoke contract from the repository root:
@@ -292,6 +331,8 @@ Readiness polling is bounded and is used only to wait for processes. Smoke asser
 * FluentAssertions
 * WireMock.Net
 * Standalone WireMock
+* Postman CLI
 * WeatherAPI
 
-Postman API automation, Playwright browser suites, CI/CD, containerization, and production deployment capabilities will be introduced incrementally as the project develops.
+Playwright browser suites, CI/CD, containerization, and production deployment
+capabilities will be introduced incrementally as the project develops.

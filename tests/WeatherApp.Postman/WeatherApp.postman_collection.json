@@ -1,0 +1,621 @@
+{
+  "info": {
+    "name": "WeatherApp API",
+    "description": "Black-box API verification for the deterministic local WeatherApp environment.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Health returns 200 OK\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        },
+        "description": "Verifies the public health endpoint."
+      },
+      "response": []
+    },
+    {
+      "name": "Weather — default imperial",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const weatherResponseSchema = {",
+              "  type: \"object\",",
+              "  additionalProperties: false,",
+              "  required: [\"location\", \"unitSystem\", \"current\", \"hourly\", \"daily\"],",
+              "  properties: {",
+              "    location: {",
+              "      type: \"object\",",
+              "      additionalProperties: false,",
+              "      required: [\"name\", \"region\", \"country\", \"timeZoneId\"],",
+              "      properties: {",
+              "        name: { type: \"string\" },",
+              "        region: { type: \"string\" },",
+              "        country: { type: \"string\" },",
+              "        timeZoneId: { type: \"string\" }",
+              "      }",
+              "    },",
+              "    unitSystem: { type: \"string\", enum: [\"imperial\", \"metric\"] },",
+              "    current: {",
+              "      type: \"object\",",
+              "      additionalProperties: false,",
+              "      required: [\"temperature\", \"condition\", \"humidity\", \"windSpeed\", \"windDirection\"],",
+              "      properties: {",
+              "        temperature: { type: \"number\" },",
+              "        condition: { type: \"string\" },",
+              "        humidity: { type: \"integer\" },",
+              "        windSpeed: { type: \"number\" },",
+              "        windDirection: { type: \"string\" }",
+              "      }",
+              "    },",
+              "    hourly: {",
+              "      type: \"array\",",
+              "      minItems: 24,",
+              "      maxItems: 24,",
+              "      items: {",
+              "        type: \"object\",",
+              "        additionalProperties: false,",
+              "        required: [\"time\", \"temperature\", \"condition\", \"precipitationChance\"],",
+              "        properties: {",
+              "          time: { type: \"string\", format: \"date-time\" },",
+              "          temperature: { type: \"number\" },",
+              "          condition: { type: \"string\" },",
+              "          precipitationChance: { type: \"integer\" }",
+              "        }",
+              "      }",
+              "    },",
+              "    daily: {",
+              "      type: \"array\",",
+              "      minItems: 3,",
+              "      maxItems: 3,",
+              "      items: {",
+              "        type: \"object\",",
+              "        additionalProperties: false,",
+              "        required: [\"date\", \"minimumTemperature\", \"maximumTemperature\", \"condition\", \"precipitationChance\"],",
+              "        properties: {",
+              "          date: { type: \"string\", format: \"date\" },",
+              "          minimumTemperature: { type: \"number\" },",
+              "          maximumTemperature: { type: \"number\" },",
+              "          condition: { type: \"string\" },",
+              "          precipitationChance: { type: \"integer\" }",
+              "        }",
+              "      }",
+              "    }",
+              "  }",
+              "};",
+              "",
+              "pm.test(\"Status code is 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response has JSON content\", function () {",
+              "  pm.response.to.be.json;",
+              "  pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^application\\/json(?:;|$)/i);",
+              "});",
+              "",
+              "const responseJson = pm.response.json();",
+              "",
+              "pm.test(\"Response matches the complete public weather contract\", function () {",
+              "  pm.response.to.have.jsonSchema(weatherResponseSchema);",
+              "});",
+              "",
+              "pm.test(\"Omitted units default to imperial\", function () {",
+              "  pm.expect(responseJson.unitSystem).to.eql(\"imperial\");",
+              "});",
+              "",
+              "pm.test(\"Location and current conditions match the deterministic fixture\", function () {",
+              "  pm.expect(responseJson.location).to.eql({",
+              "    name: \"Tampa\",",
+              "    region: \"Florida\",",
+              "    country: \"United States of America\",",
+              "    timeZoneId: \"America/New_York\"",
+              "  });",
+              "  pm.expect(responseJson.current).to.eql({",
+              "    temperature: 87.8,",
+              "    condition: \"Partly cloudy\",",
+              "    humidity: 70,",
+              "    windSpeed: 8.1,",
+              "    windDirection: \"E\"",
+              "  });",
+              "});",
+              "",
+              "pm.test(\"Forecast contains exactly 24 hourly and three daily entries\", function () {",
+              "  pm.expect(responseJson.hourly).to.have.lengthOf(24);",
+              "  pm.expect(responseJson.daily).to.have.lengthOf(3);",
+              "});",
+              "",
+              "pm.test(\"Representative hourly entries match the deterministic fixture\", function () {",
+              "  const representativeHours = [",
+              "    {",
+              "      index: 0,",
+              "      expected: {",
+              "        time: \"2026-08-21T01:00:00+00:00\",",
+              "        temperature: 80.6,",
+              "        condition: \"Sunny\",",
+              "        precipitationChance: 10",
+              "      }",
+              "    },",
+              "    {",
+              "      index: 12,",
+              "      expected: {",
+              "        time: \"2026-08-21T13:00:00+00:00\",",
+              "        temperature: 80.6,",
+              "        condition: \"Sunny\",",
+              "        precipitationChance: 10",
+              "      }",
+              "    },",
+              "    {",
+              "      index: 23,",
+              "      expected: {",
+              "        time: \"2026-08-22T00:00:00+00:00\",",
+              "        temperature: 80.6,",
+              "        condition: \"Sunny\",",
+              "        precipitationChance: 10",
+              "      }",
+              "    }",
+              "  ];",
+              "",
+              "  for (const entry of representativeHours) {",
+              "    pm.expect(responseJson.hourly[entry.index], \"hourly[\" + entry.index + \"]\").to.eql(entry.expected);",
+              "  }",
+              "});",
+              "",
+              "pm.test(\"Daily forecast matches the deterministic fixture\", function () {",
+              "  pm.expect(responseJson.daily).to.eql([",
+              "    {",
+              "      date: \"2026-08-20\",",
+              "      minimumTemperature: 77,",
+              "      maximumTemperature: 91.4,",
+              "      condition: \"Partly cloudy\",",
+              "      precipitationChance: 40",
+              "    },",
+              "    {",
+              "      date: \"2026-08-21\",",
+              "      minimumTemperature: 77,",
+              "      maximumTemperature: 91.4,",
+              "      condition: \"Partly cloudy\",",
+              "      precipitationChance: 40",
+              "    },",
+              "    {",
+              "      date: \"2026-08-22\",",
+              "      minimumTemperature: 77,",
+              "      maximumTemperature: 91.4,",
+              "      condition: \"Partly cloudy\",",
+              "      precipitationChance: 40",
+              "    }",
+              "  ]);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/weather?location={{tampaLocation}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "weather"
+          ],
+          "query": [
+            {
+              "key": "location",
+              "value": "{{tampaLocation}}"
+            }
+          ]
+        },
+        "description": "Requests the deterministic Tampa forecast using the public default unit system."
+      },
+      "response": []
+    },
+    {
+      "name": "Weather — metric",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response has JSON content\", function () {",
+              "  pm.response.to.be.json;",
+              "  pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^application\\/json(?:;|$)/i);",
+              "});",
+              "",
+              "const responseJson = pm.response.json();",
+              "",
+              "pm.test(\"Explicit metric units select the metric unit system\", function () {",
+              "  pm.expect(responseJson.unitSystem).to.eql(\"metric\");",
+              "});",
+              "",
+              "pm.test(\"Current conditions use the deterministic metric values\", function () {",
+              "  pm.expect(responseJson.current).to.eql({",
+              "    temperature: 31,",
+              "    condition: \"Partly cloudy\",",
+              "    humidity: 70,",
+              "    windSpeed: 13,",
+              "    windDirection: \"E\"",
+              "  });",
+              "});",
+              "",
+              "pm.test(\"Representative hourly entries use the deterministic metric values\", function () {",
+              "  const representativeHours = [",
+              "    {",
+              "      index: 0,",
+              "      expected: {",
+              "        time: \"2026-08-21T01:00:00+00:00\",",
+              "        temperature: 27,",
+              "        condition: \"Sunny\",",
+              "        precipitationChance: 10",
+              "      }",
+              "    },",
+              "    {",
+              "      index: 12,",
+              "      expected: {",
+              "        time: \"2026-08-21T13:00:00+00:00\",",
+              "        temperature: 27,",
+              "        condition: \"Sunny\",",
+              "        precipitationChance: 10",
+              "      }",
+              "    },",
+              "    {",
+              "      index: 23,",
+              "      expected: {",
+              "        time: \"2026-08-22T00:00:00+00:00\",",
+              "        temperature: 27,",
+              "        condition: \"Sunny\",",
+              "        precipitationChance: 10",
+              "      }",
+              "    }",
+              "  ];",
+              "",
+              "  for (const entry of representativeHours) {",
+              "    pm.expect(responseJson.hourly[entry.index], \"hourly[\" + entry.index + \"]\").to.eql(entry.expected);",
+              "  }",
+              "});",
+              "",
+              "pm.test(\"Daily forecast uses the deterministic metric values\", function () {",
+              "  pm.expect(responseJson.daily).to.eql([",
+              "    {",
+              "      date: \"2026-08-20\",",
+              "      minimumTemperature: 25,",
+              "      maximumTemperature: 33,",
+              "      condition: \"Partly cloudy\",",
+              "      precipitationChance: 40",
+              "    },",
+              "    {",
+              "      date: \"2026-08-21\",",
+              "      minimumTemperature: 25,",
+              "      maximumTemperature: 33,",
+              "      condition: \"Partly cloudy\",",
+              "      precipitationChance: 40",
+              "    },",
+              "    {",
+              "      date: \"2026-08-22\",",
+              "      minimumTemperature: 25,",
+              "      maximumTemperature: 33,",
+              "      condition: \"Partly cloudy\",",
+              "      precipitationChance: 40",
+              "    }",
+              "  ]);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/weather?location={{tampaLocation}}&units=metric",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "weather"
+          ],
+          "query": [
+            {
+              "key": "location",
+              "value": "{{tampaLocation}}"
+            },
+            {
+              "key": "units",
+              "value": "metric"
+            }
+          ]
+        },
+        "description": "Requests the deterministic Tampa forecast using metric units."
+      },
+      "response": []
+    },
+    {
+      "name": "Weather — missing location",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status code is 400\", function () {",
+              "  pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test(\"Response uses the Problem Details JSON media type\", function () {",
+              "  pm.response.to.be.json;",
+              "  pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^application\\/problem\\+json(?:;|$)/i);",
+              "});",
+              "",
+              "const responseBody = pm.response.text();",
+              "const responseJson = pm.response.json();",
+              "",
+              "pm.test(\"Problem details describe the missing location\", function () {",
+              "  pm.expect(responseJson.title).to.eql(\"Invalid location\");",
+              "  pm.expect(responseJson.status).to.eql(400);",
+              "  pm.expect(responseJson.detail).to.eql(\"A location must be provided.\");",
+              "});",
+              "",
+              "pm.test(\"Response does not expose provider details or credentials\", function () {",
+              "  for (const propertyName of [\"error\", \"providerError\", \"providerResponse\", \"apiKey\"]) {",
+              "    pm.expect(responseJson).not.to.have.property(propertyName);",
+              "  }",
+              "",
+              "  for (const forbiddenText of [",
+              "    \"No matching location found.\",",
+              "    \"Deterministic provider failure.\",",
+              "    \"WeatherAPI request failed\",",
+              "    \"weatherapp-e2e-placeholder\"",
+              "  ]) {",
+              "    pm.expect(responseBody).not.to.include(forbiddenText);",
+              "  }",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/weather",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "weather"
+          ]
+        },
+        "description": "Omits the required location query value."
+      },
+      "response": []
+    },
+    {
+      "name": "Weather — invalid units",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status code is 400\", function () {",
+              "  pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test(\"Response uses the Problem Details JSON media type\", function () {",
+              "  pm.response.to.be.json;",
+              "  pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^application\\/problem\\+json(?:;|$)/i);",
+              "});",
+              "",
+              "const responseBody = pm.response.text();",
+              "const responseJson = pm.response.json();",
+              "",
+              "pm.test(\"Problem details describe the unsupported units\", function () {",
+              "  pm.expect(responseJson.title).to.eql(\"Invalid units\");",
+              "  pm.expect(responseJson.status).to.eql(400);",
+              "  pm.expect(responseJson.detail).to.eql(\"Units must be either imperial or metric.\");",
+              "});",
+              "",
+              "pm.test(\"Response does not expose provider details or credentials\", function () {",
+              "  for (const propertyName of [\"error\", \"providerError\", \"providerResponse\", \"apiKey\"]) {",
+              "    pm.expect(responseJson).not.to.have.property(propertyName);",
+              "  }",
+              "",
+              "  for (const forbiddenText of [",
+              "    \"No matching location found.\",",
+              "    \"Deterministic provider failure.\",",
+              "    \"WeatherAPI request failed\",",
+              "    \"weatherapp-e2e-placeholder\"",
+              "  ]) {",
+              "    pm.expect(responseBody).not.to.include(forbiddenText);",
+              "  }",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/weather?location={{tampaLocation}}&units=kelvin",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "weather"
+          ],
+          "query": [
+            {
+              "key": "location",
+              "value": "{{tampaLocation}}"
+            },
+            {
+              "key": "units",
+              "value": "kelvin"
+            }
+          ]
+        },
+        "description": "Supplies a deterministic unsupported unit value."
+      },
+      "response": []
+    },
+    {
+      "name": "Weather — unknown location",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status code is 404\", function () {",
+              "  pm.response.to.have.status(404);",
+              "});",
+              "",
+              "pm.test(\"Response uses the Problem Details JSON media type\", function () {",
+              "  pm.response.to.be.json;",
+              "  pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^application\\/problem\\+json(?:;|$)/i);",
+              "});",
+              "",
+              "const responseBody = pm.response.text();",
+              "const responseJson = pm.response.json();",
+              "",
+              "pm.test(\"Problem details describe the unknown location\", function () {",
+              "  pm.expect(responseJson.title).to.eql(\"Location not found\");",
+              "  pm.expect(responseJson.status).to.eql(404);",
+              "  pm.expect(responseJson.detail).to.eql(\"The requested location could not be found.\");",
+              "});",
+              "",
+              "pm.test(\"Response does not expose provider error details\", function () {",
+              "  pm.expect(responseBody).not.to.include(\"1006\");",
+              "  pm.expect(responseBody).not.to.include(\"No matching location found.\");",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/weather?location={{unknownLocation}}&units=imperial",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "weather"
+          ],
+          "query": [
+            {
+              "key": "location",
+              "value": "{{unknownLocation}}"
+            },
+            {
+              "key": "units",
+              "value": "imperial"
+            }
+          ]
+        },
+        "description": "Selects the deterministic unknown-location provider response."
+      },
+      "response": []
+    },
+    {
+      "name": "Weather — provider unavailable",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status code is 503\", function () {",
+              "  pm.response.to.have.status(503);",
+              "});",
+              "",
+              "pm.test(\"Response uses the Problem Details JSON media type\", function () {",
+              "  pm.response.to.be.json;",
+              "  pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^application\\/problem\\+json(?:;|$)/i);",
+              "});",
+              "",
+              "const responseBody = pm.response.text();",
+              "const responseJson = pm.response.json();",
+              "",
+              "pm.test(\"Problem details describe the unavailable provider\", function () {",
+              "  pm.expect(responseJson.title).to.eql(\"Weather provider unavailable\");",
+              "  pm.expect(responseJson.status).to.eql(503);",
+              "  pm.expect(responseJson.detail).to.eql(\"Weather data is temporarily unavailable. Please try again later.\");",
+              "});",
+              "",
+              "pm.test(\"Response does not expose provider error details\", function () {",
+              "  pm.expect(responseBody).not.to.include(\"9999\");",
+              "  pm.expect(responseBody).not.to.include(\"Deterministic provider failure.\");",
+              "  pm.expect(responseBody).not.to.include(\"WeatherAPI request failed\");",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/weather?location={{providerFailureLocation}}&units=imperial",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "weather"
+          ],
+          "query": [
+            {
+              "key": "location",
+              "value": "{{providerFailureLocation}}"
+            },
+            {
+              "key": "units",
+              "value": "imperial"
+            }
+          ]
+        },
+        "description": "Selects the deterministic provider-failure response."
+      },
+      "response": []
+    }
+  ]
+}
