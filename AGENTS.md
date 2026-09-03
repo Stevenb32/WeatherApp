@@ -61,7 +61,8 @@ WeatherApp/
 │   └── WeatherApp.Ui/
 ├── tests/
 │   ├── TestEnvironment/
-│   └── WeatherApp.Api.Tests/
+│   ├── WeatherApp.Api.Tests/
+│   └── WeatherApp.Postman/
 ├── .node-version
 ├── .env.example
 ├── .gitignore
@@ -71,7 +72,9 @@ WeatherApp/
 └── WeatherApp.slnx
 ```
 
-Milestone 3 has introduced a shared deterministic full-stack test environment. Additional test and CI infrastructure will be added through its individual GitHub Issues.
+Milestone 3 has introduced a shared deterministic full-stack test environment
+and a repository-owned Postman CLI API suite. Additional test and CI
+infrastructure will be added through its individual GitHub Issues.
 
 Do not create planned folders or projects before the issue that requires them.
 
@@ -119,7 +122,22 @@ Tests should verify meaningful application behavior and important boundaries rat
 
 Repository-owned standalone WireMock mappings and fixed provider responses for deterministic full-stack testing.
 
-Use `scripts/test-environment.mjs` to build, start, verify, and stop the fixed WireMock/API/Vite-preview process stack. Later full-stack suites should consume this environment instead of creating a separate provider boundary.
+Use `scripts/test-environment.mjs` to build, start, verify, and stop the fixed
+WireMock/API/Vite-preview process stack. The Postman suite and future full-stack
+suites should consume this environment instead of creating a separate provider
+boundary.
+
+### `tests/WeatherApp.Postman`
+
+Repository-owned Postman Collection v2.1 and local non-secret environment for
+black-box verification of the Weather App's public HTTP API.
+
+Run the collection with Postman CLI against the shared deterministic test
+environment. The suite must remain runnable from its checked-in JSON files
+without a Postman login, Postman API key, workspace synchronization, or cloud
+collection ID. Generated JUnit and HTML reports belong under
+`tests/WeatherApp.Postman/reports/` and must remain ignored by Git. Use the
+directory's `README.md` as the authoritative detailed workflow.
 
 ---
 
@@ -262,7 +280,7 @@ Prefer testing behavior visible to the component's consumer rather than implemen
 
 ### API — Postman CLI
 
-During Milestone 3, Postman CLI is introduced as the black-box public API test layer.
+Postman CLI is the repository's black-box public API test layer.
 
 Postman tests should verify the Weather App API as an external HTTP consumer would.
 
@@ -526,7 +544,7 @@ The following are outside Milestone 3 unless a later approved issue explicitly c
 
 Run commands from the repository root unless otherwise noted.
 
-The repository pins .NET SDK `10.0.303` in `global.json`, Node.js `24.20.0` in `.node-version`, and standalone WireMock `2.15.0` in the local .NET tool manifest. Restore dependencies with `dotnet tool restore`, `dotnet restore`, and `npm ci` before verification.
+The repository pins .NET SDK `10.0.303` in `global.json`, Node.js `24.20.0` in `.node-version`, and standalone WireMock `2.15.0` in the local .NET tool manifest. Restore dependencies with `dotnet tool restore`, `dotnet restore`, and `npm ci` before verification. Postman API verification also requires Postman CLI to be available as `postman` on `PATH`.
 
 ## Backend
 
@@ -612,7 +630,8 @@ Run the self-contained smoke contract from the repository root:
 node scripts/test-environment.mjs verify
 ```
 
-Keep the same fixed environment running for manual verification or a later Postman/Playwright suite:
+Keep the same fixed environment running for manual verification, the Postman
+API suite, or a future browser suite:
 
 ```powershell
 node scripts/test-environment.mjs serve
@@ -620,9 +639,22 @@ node scripts/test-environment.mjs serve
 
 The fixed addresses are WireMock at `127.0.0.1:9090`, the API at `127.0.0.1:5100`, and Vite production preview at `127.0.0.1:4173`. The runner must fail on port conflicts, use bounded readiness polling, and release all process trees and ports on every exit path.
 
+## Postman API
+
+Start the deterministic environment with
+`node scripts/test-environment.mjs serve`, then run the checked-in collection
+from another terminal using the command documented in
+`tests/WeatherApp.Postman/README.md`. The standard run must use the CLI, JUnit,
+and HTML reporters, keep the documented stable report paths, preserve nonzero
+failure exit codes, and use zero automatic retries.
+
+Do not commit generated files beneath `tests/WeatherApp.Postman/reports/`.
+
 When a change affects a project, run the relevant build, lint, and test commands before considering the work complete.
 
-As Milestone 3 introduces repository-owned Postman, Playwright, reporting, coverage, and CI commands, use the commands established by the corresponding issue and update repository documentation when they become part of the actual workflow.
+As Milestone 3 introduces repository-owned Playwright, coverage, and CI commands,
+use the commands established by the corresponding issue and update repository
+documentation when they become part of the actual workflow.
 
 Do not invent commands for planned infrastructure that has not yet been implemented.
 
