@@ -62,6 +62,7 @@ WeatherApp/
 ├── tests/
 │   ├── TestEnvironment/
 │   ├── WeatherApp.Api.Tests/
+│   ├── WeatherApp.E2E/
 │   └── WeatherApp.Postman/
 ├── .node-version
 ├── .env.example
@@ -73,8 +74,8 @@ WeatherApp/
 ```
 
 Milestone 3 has introduced a shared deterministic full-stack test environment
-and a repository-owned Postman CLI API suite. Additional test and CI
-infrastructure will be added through its individual GitHub Issues.
+and repository-owned Postman CLI API and Playwright Chromium suites. Additional
+test and CI infrastructure will be added through its individual GitHub Issues.
 
 Do not create planned folders or projects before the issue that requires them.
 
@@ -123,9 +124,8 @@ Tests should verify meaningful application behavior and important boundaries rat
 Repository-owned standalone WireMock mappings and fixed provider responses for deterministic full-stack testing.
 
 Use `scripts/test-environment.mjs` to build, start, verify, and stop the fixed
-WireMock/API/Vite-preview process stack. The Postman suite and future full-stack
-suites should consume this environment instead of creating a separate provider
-boundary.
+WireMock/API/Vite-preview process stack. The Postman and Playwright suites consume
+this environment instead of creating a separate provider boundary.
 
 ### `tests/WeatherApp.Postman`
 
@@ -138,6 +138,21 @@ without a Postman login, Postman API key, workspace synchronization, or cloud
 collection ID. Generated JUnit and HTML reports belong under
 `tests/WeatherApp.Postman/reports/` and must remain ignored by Git. Use the
 directory's `README.md` as the authoritative detailed workflow.
+
+### `tests/WeatherApp.E2E`
+
+Separate Playwright TypeScript project for the four core Chromium full-stack
+journeys. Keep browser dependencies and configuration outside the UI project.
+Its `webServer` starts the shared deterministic runner and owns teardown; do not
+start another stack or reuse manually running services for these tests.
+
+Use one worker and zero retries. Each test must establish its own UI state; the
+automatic fixture resets WireMock requests and scenarios before each test.
+Loading checks may temporarily hold a real request and then continue it unchanged;
+do not replace the API response with a browser mock for these full-stack journeys.
+
+Keep generated `reports/` and `test-results/` output ignored. Use this directory's
+`README.md` as the authoritative setup, execution, and diagnosis workflow.
 
 ---
 
@@ -319,7 +334,8 @@ Postman CLI testing must not require:
 
 ### Browser / Full Stack — Playwright
 
-During Milestone 3, Playwright is introduced as the browser-level and full-stack test layer.
+Playwright is the browser-level and full-stack test layer. The current suite covers
+the core Chromium journeys; additional browser risks require their own issue scope.
 
 Playwright should verify valuable user journeys and browser-specific risks, including:
 
@@ -630,8 +646,8 @@ Run the self-contained smoke contract from the repository root:
 node scripts/test-environment.mjs verify
 ```
 
-Keep the same fixed environment running for manual verification, the Postman
-API suite, or a future browser suite:
+Keep the same fixed environment running for manual verification or the Postman
+API suite:
 
 ```powershell
 node scripts/test-environment.mjs serve
@@ -650,9 +666,23 @@ failure exit codes, and use zero automatic retries.
 
 Do not commit generated files beneath `tests/WeatherApp.Postman/reports/`.
 
+## Playwright E2E
+
+After the setup in `tests/WeatherApp.E2E/README.md`, run from that directory:
+
+```powershell
+npm run typecheck
+npm test
+```
+
+Playwright builds the API and UI and starts its own deterministic stack. All three
+fixed service ports must be free. `npm run report` opens the HTML report explicitly.
+JUnit and HTML reports belong under `reports/`; failure traces, screenshots, and
+videos belong under `test-results/`. Neither directory belongs in source control.
+
 When a change affects a project, run the relevant build, lint, and test commands before considering the work complete.
 
-As Milestone 3 introduces repository-owned Playwright, coverage, and CI commands,
+As Milestone 3 introduces repository-owned coverage and CI commands,
 use the commands established by the corresponding issue and update repository
 documentation when they become part of the actual workflow.
 

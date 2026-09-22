@@ -41,6 +41,7 @@ The frontend currently includes:
 * Tailwind CSS through its official Vite plugin
 * A same-origin local development proxy for relative `/api` requests
 * Component testing with Vitest, jsdom, and React Testing Library
+* Full-stack Chromium journeys in a separate Playwright test project
 
 ## API
 
@@ -79,7 +80,7 @@ Requirements:
 * Node.js 24.20.0, pinned by `.node-version`
 * npm, using the checked-in `package-lock.json`
 * Postman CLI, available as `postman` on `PATH`, for the API test suite
-* A WeatherAPI API key
+* A WeatherAPI API key for live local development; automated tests use deterministic fixtures
 
 ### Install dependencies
 
@@ -195,8 +196,7 @@ node scripts/test-environment.mjs verify
 
 This command validates the pinned runtimes and provider isolation, builds the API in Release configuration, builds the React production output, starts all three processes, performs bounded readiness checks, exercises the shared fixtures through the real API and preview proxy, and always tears the processes down. Successful cleanup is not assumed: the runner confirms that ports `9090`, `5100`, and `4173` are released.
 
-Keep the same environment running for manual use, the Postman API suite, or a
-future browser test suite:
+Keep the same environment running for manual use or the Postman API suite:
 
 ```powershell
 node scripts/test-environment.mjs serve
@@ -236,8 +236,8 @@ The checked-in `E2E` API environment accepts only `http://127.0.0.1:9090/v1/` as
 The Postman CLI suite starts from this environment's fixed API address and uses
 the repository-owned fixture selectors. See the
 [Postman API test instructions](tests/WeatherApp.Postman/README.md) for the
-collection workflow. Future browser suites should consume the same environment
-instead of creating separate providers or servers.
+collection workflow. The [Playwright suite](tests/WeatherApp.E2E/README.md) starts
+this shared stack itself; stop a manually running stack before invoking it.
 
 For lifecycle diagnostics, the verifier also supports deliberate failures. These commands are expected to exit unsuccessfully after releasing all managed ports:
 
@@ -306,6 +306,24 @@ The suite runs from local JSON files without a Postman login or Postman API key.
 See the [suite README](tests/WeatherApp.Postman/README.md) for focused runs and
 report details.
 
+### Playwright E2E
+
+After the [one-time E2E setup](tests/WeatherApp.E2E/README.md#setup), run from the
+repository root:
+
+```powershell
+cd tests/WeatherApp.E2E
+npm run typecheck
+npm test
+```
+
+Playwright builds and starts the production UI, real API, and shared WireMock
+environment, runs four independent Chromium journeys with one worker and zero
+retries, and stops its processes. No WeatherAPI credential is needed. See the
+[E2E README](tests/WeatherApp.E2E/README.md) for focused commands, fixture behavior,
+and JUnit/HTML reports and retained failure evidence. CI workflows have not yet
+been introduced.
+
 ### Full stack
 
 Run the deterministic full-stack smoke contract from the repository root:
@@ -332,7 +350,8 @@ Readiness polling is bounded and is used only to wait for processes. Smoke asser
 * WireMock.Net
 * Standalone WireMock
 * Postman CLI
+* Playwright
 * WeatherAPI
 
-Playwright browser suites, CI/CD, containerization, and production deployment
+CI/CD, containerization, and production deployment
 capabilities will be introduced incrementally as the project develops.
