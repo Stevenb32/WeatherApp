@@ -4,6 +4,8 @@ node_modules/
 dist/
 coverage/
 tests/WeatherApp.Postman/reports/
+tests/WeatherApp.E2E/reports/
+tests/WeatherApp.E2E/test-results/
 
 .env
 .env.*
