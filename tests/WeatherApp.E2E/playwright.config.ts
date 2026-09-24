@@ -42,7 +42,23 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: '**/browser-smoke.spec.ts',
       use: { browserName: 'chromium' },
+    },
+    {
+      name: 'firefox',
+      testMatch: '**/browser-smoke.spec.ts',
+      use: { browserName: 'firefox' },
+    },
+    {
+      name: 'webkit',
+      testMatch: '**/browser-smoke.spec.ts',
+      use: {
+        browserName: 'webkit',
+        viewport: { width: 320, height: 720 },
+        isMobile: true,
+        hasTouch: true,
+      },
     },
   ],
 })

@@ -189,6 +189,8 @@ test('Provider failure and Retry recovery', async ({ page }) => {
   await page.goto('/')
 
   const city = page.getByLabel('City', { exact: true })
+  const search = page.getByRole('button', { name: 'Search', exact: true })
+  const imperial = page.getByRole('radio', { name: 'Fahrenheit (imperial units)' })
   const metric = page.getByRole('radio', { name: 'Celsius (metric units)' })
   const results = page.getByRole('region', { name: 'Weather results', exact: true })
   const alert = results.getByRole('alert')
@@ -196,10 +198,15 @@ test('Provider failure and Retry recovery', async ({ page }) => {
   const resolvedLocation = 'Current weather for Tampa, Florida, United States of America'
   const current = results.getByRole('region', { name: resolvedLocation, exact: true })
 
-  await metric.press('Space')
+  await page.keyboard.press('Tab')
+  await expect(imperial).toBeFocused()
+  await page.keyboard.press('ArrowRight')
+  await expect(metric).toBeFocused()
   await expect(metric).toBeChecked()
-  await city.fill('RetryRecovery')
-  await page.getByRole('button', { name: 'Search', exact: true }).click()
+  await page.keyboard.press('Tab')
+  await expect(city).toBeFocused()
+  await page.keyboard.type('RetryRecovery')
+  await page.keyboard.press('Enter')
 
   await expect(alert.getByRole('heading', {
     name: 'Weather is temporarily unavailable',
@@ -213,19 +220,27 @@ test('Provider failure and Retry recovery', async ({ page }) => {
   await expect(retry).toBeVisible()
   await expect(retry).toBeEnabled()
   await expect(results).toHaveAttribute('aria-busy', 'false')
+  await expect(city).toBeFocused()
 
   // An unsubmitted edit must not replace the location used by Retry.
-  await city.fill('NotARealPlace')
+  await page.keyboard.press('ControlOrMeta+A')
+  await page.keyboard.type('NotARealPlace')
+  await expect(city).toHaveValue('NotARealPlace')
+  await page.keyboard.press('Tab')
+  await expect(search).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(retry).toBeFocused()
   await withPendingWeatherRequest(
     page,
     { location: 'RetryRecovery', units: 'metric' },
-    () => retry.click(),
+    () => page.keyboard.press('Enter'),
     async () => {
       await expect(results).toHaveAttribute('aria-busy', 'true')
       await expect(results.getByText('Loading weather…', { exact: true })).toBeVisible()
       await expect(alert).toHaveCount(0)
       await expect(retry).toHaveCount(0)
       await expect(current).toHaveCount(0)
+      await expect(city).toBeFocused()
     },
   )
 
@@ -241,4 +256,9 @@ test('Provider failure and Retry recovery', async ({ page }) => {
   await expect(results.getByText('Loading weather…', { exact: true })).toHaveCount(0)
   await expect(alert).toHaveCount(0)
   await expect(retry).toHaveCount(0)
+  await expect(city).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(search).toBeFocused()
+  await page.keyboard.press('Shift+Tab')
+  await expect(city).toBeFocused()
 })
