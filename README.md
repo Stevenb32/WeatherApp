@@ -41,7 +41,7 @@ The frontend currently includes:
 * Tailwind CSS through its official Vite plugin
 * A same-origin local development proxy for relative `/api` requests
 * Component testing with Vitest, jsdom, and React Testing Library
-* Full-stack Chromium journeys in a separate Playwright test project
+* Full-stack Chromium journeys and Firefox/WebKit smoke coverage in a separate Playwright test project
 
 ## API
 
@@ -318,8 +318,12 @@ npm test
 ```
 
 Playwright builds and starts the production UI, real API, and shared WireMock
-environment, runs four independent Chromium journeys with one worker and zero
-retries, and stops its processes. No WeatherAPI credential is needed. See the
+environment, runs five independent Chromium journeys (including keyboard and
+focus coverage), five axe scan states, twelve responsive/long-content cases, and
+six primary-target-size cases. Firefox desktop and WebKit mobile each run a
+successful-search smoke; WebKit also checks page overflow. All 30 tests run with
+one worker and zero retries, and Playwright stops its processes. No WeatherAPI
+credential is needed. See the
 [E2E README](tests/WeatherApp.E2E/README.md) for focused commands, fixture behavior,
 and JUnit/HTML reports and retained failure evidence. CI workflows have not yet
 been introduced.

@@ -74,7 +74,7 @@ WeatherApp/
 ```
 
 Milestone 3 has introduced a shared deterministic full-stack test environment
-and repository-owned Postman CLI API and Playwright Chromium suites. Additional
+and repository-owned Postman CLI API and Playwright browser suites. Additional
 test and CI infrastructure will be added through its individual GitHub Issues.
 
 Do not create planned folders or projects before the issue that requires them.
@@ -142,7 +142,10 @@ directory's `README.md` as the authoritative detailed workflow.
 ### `tests/WeatherApp.E2E`
 
 Separate Playwright TypeScript project for the four core Chromium full-stack
-journeys. Keep browser dependencies and configuration outside the UI project.
+journeys, keyboard/focus coverage, whole-page axe accessibility scans, and
+responsive/long-content and primary-target-size checks. Firefox desktop and WebKit
+mobile run only the shared successful-search smoke; WebKit also checks page overflow.
+Keep browser dependencies and configuration outside the UI project.
 Its `webServer` starts the shared deterministic runner and owns teardown; do not
 start another stack or reuse manually running services for these tests.
 
@@ -335,7 +338,9 @@ Postman CLI testing must not require:
 ### Browser / Full Stack — Playwright
 
 Playwright is the browser-level and full-stack test layer. The current suite covers
-the core Chromium journeys; additional browser risks require their own issue scope.
+the core Chromium journeys, keyboard/focus coverage, axe scans, and responsive
+boundaries with long content and primary target sizes, plus Firefox desktop and
+WebKit mobile smoke coverage. Additional browser risks require their own issue scope.
 
 Playwright should verify valuable user journeys and browser-specific risks, including:
 
