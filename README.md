@@ -26,6 +26,7 @@ The backend currently supports:
 * A health-check endpoint that remains outside the weather rate limit
 * Error handling for invalid locations, provider failures, and timeouts
 * Integration testing with xUnit, FluentAssertions, and WireMock.Net
+* Local backend test reports and global line/branch coverage gates
 * Black-box public API testing with Postman CLI
 
 The frontend currently includes:
@@ -261,6 +262,91 @@ dotnet test WeatherApp.slnx
 ```
 
 The integration tests use WireMock.Net to simulate WeatherAPI responses without calling the real provider.
+
+#### Backend reports and coverage gate
+
+Run the complete backend verification from the repository root:
+
+```powershell
+node scripts/test-backend.mjs
+```
+
+Use the pinned .NET SDK `10.0.303` and Node.js `24.20.0`. The command restores
+the local .NET tools and solution dependencies itself; package restoration may
+need NuGet access. ReportGenerator is pinned to `5.5.11` in
+[the local tool manifest](.config/dotnet-tools.json). Backend verification needs
+no WeatherAPI credential, npm installation, Postman CLI, browser installation,
+or running shared full-stack environment.
+
+The command performs these steps in order:
+
+1. Replace the previous backend reports and restore tools and dependencies.
+2. Build the solution in Release configuration.
+3. Run the xUnit tests through VSTest, collecting TRX test results and Coverlet
+   Cobertura coverage with the checked-in runsettings.
+4. Copy the coverage attachment to a stable path and run ReportGenerator to
+   produce HTML, Markdown, and JSON summaries and enforce the coverage floors.
+5. Validate that the required reports exist and that the summary contains
+   usable coverage counts for the production API assembly.
+
+The global minimums are **80% line coverage** and **70% branch coverage**.
+Line coverage measures which executable lines ran; branch coverage measures
+which decision outcomes ran. These floors apply across the API assembly, not
+to each file or only changed lines. Functions and statements are not gated.
+Coverage shows execution, not whether assertions are useful or every important
+behavior is protected. Use it to find meaningful test gaps; do not target 100%
+or lower thresholds or exclude handwritten code to make a failure pass.
+
+The [coverage settings](tests/WeatherApp.Api.Tests/coverage.runsettings) include
+only the first-party `WeatherApp.Api` assembly, including startup, options,
+mapping, orchestration, and auto-properties. Test assemblies, test utilities,
+and third-party assemblies are outside that scope. Build output under `obj/`
+and `bin/`, and code marked with `GeneratedCodeAttribute` or
+`ExcludeFromCodeCoverageAttribute`, are excluded. Compiler-generated code is
+not excluded as a category because async methods and lambdas can represent
+handwritten production behavior. This workflow does not collect application
+coverage from Postman or Playwright or enforce frontend thresholds.
+
+All output is local and ignored by Git. Paths below are relative to
+`tests/WeatherApp.Api.Tests/reports/`:
+
+| Report | Path | Purpose |
+| --- | --- | --- |
+| TRX | `tests/backend-tests.trx` | Individual test outcomes and failure details |
+| Cobertura XML | `coverage.cobertura.xml` | Stable machine-readable coverage input |
+| HTML | `coverage/index.html` | Browse coverage by assembly, class, and source line |
+| Markdown | `coverage/SummaryGithub.md` | Readable coverage summary |
+| JSON | `coverage/Summary.json` | Structured summary validated by the runner |
+
+Open `tests/WeatherApp.Api.Tests/reports/coverage/index.html` in your browser
+after a run. Start at the summary, then drill into classes to inspect uncovered
+lines and branches. The runner also prints report paths and coverage totals.
+
+**Each invocation replaces the entire backend `reports/` directory.** Copy
+evidence outside that directory before running again, and run only one backend
+coverage command at a time.
+
+A successful command exits with code `0`. Restore or build failures stop the
+workflow early. If tests fail, the runner still attempts report generation when
+coverage is available and preserves the test process's nonzero exit code.
+Coverage below either floor, reporting failures, and missing or invalid report
+data also produce a nonzero exit. Use the named console stage to locate the
+failure, TRX for test failures, and the coverage reports for missed lines or
+branches. Inspect retained evidence before the next run replaces it. Tests have
+zero automatic retries; each .NET command has a ten-minute timeout.
+
+The ordinary `dotnet test WeatherApp.slnx` command remains available for a quick
+test run; it does not enforce these coverage floors. When changing the backend
+verification runner, also run its focused tests:
+
+```powershell
+node --test scripts/test-backend.test.mjs
+```
+
+These Node tests simulate .NET command results to exercise orchestration,
+failure handling, report validation, and stale-report cleanup. They complement
+the real backend run above. No CI workflow or external reporting service is
+required for this local verification.
 
 ### Frontend
 

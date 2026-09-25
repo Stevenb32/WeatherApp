@@ -55,6 +55,8 @@ WeatherApp/
 ├── .config/
 │   └── dotnet-tools.json
 ├── scripts/
+│   ├── test-backend.mjs
+│   ├── test-backend.test.mjs
 │   └── test-environment.mjs
 ├── src/
 │   ├── WeatherApp.Api/
@@ -118,6 +120,12 @@ The backend test suite uses tools including:
 * WireMock.Net
 
 Tests should verify meaningful application behavior and important boundaries rather than maximizing test count.
+
+Use `scripts/test-backend.mjs` for backend reports and coverage enforcement.
+It uses Coverlet and the pinned local ReportGenerator tool. Keep generated
+output under `tests/WeatherApp.Api.Tests/reports/` ignored by Git. The
+[root README's backend section](README.md#backend) is the authoritative workflow
+and report-location reference.
 
 ### `tests/TestEnvironment`
 
@@ -476,18 +484,22 @@ Do not target 100% coverage.
 
 Do not exclude handwritten production code from coverage merely because it is difficult to test.
 
-Milestone 3's planned global minimum coverage floors are:
+Milestone 3's global minimum coverage floors are:
 
-| Codebase | Lines | Branches | Functions | Statements |
-| -------- | ----: | -------: | --------: | ---------: |
-| Backend  |   80% |      70% | Not gated |  Not gated |
-| Frontend |   80% |      75% |       80% |        80% |
+| Codebase | Lines | Branches | Functions | Statements | Status |
+| -------- | ----: | -------: | --------: | ---------: | ------ |
+| Backend  |   80% |      70% | Not gated |  Not gated | Enforced by the backend verification command |
+| Frontend |   80% |      75% |       80% |        80% | Planned |
 
-These are Milestone 3 targets.
+Backend coverage must include the handwritten production API, including startup,
+options, mapping, orchestration, and auto-properties. Do not add exclusions or
+lower thresholds merely to make the gate pass. Missing or invalid coverage
+must fail verification rather than silently bypassing the gate.
 
-Do not implement or enforce a coverage gate before the active GitHub Issue introduces it.
+Frontend floors remain planned; do not enforce them before the corresponding
+GitHub Issue introduces the gate.
 
-When the relevant issue is implemented, preserve these principles:
+Preserve these principles:
 
 * Global thresholds rather than per-file thresholds.
 * No changed-lines/diff-coverage requirement during Milestone 3.
@@ -565,7 +577,7 @@ The following are outside Milestone 3 unless a later approved issue explicitly c
 
 Run commands from the repository root unless otherwise noted.
 
-The repository pins .NET SDK `10.0.303` in `global.json`, Node.js `24.20.0` in `.node-version`, and standalone WireMock `2.15.0` in the local .NET tool manifest. Restore dependencies with `dotnet tool restore`, `dotnet restore`, and `npm ci` before verification. Postman API verification also requires Postman CLI to be available as `postman` on `PATH`.
+The repository pins .NET SDK `10.0.303` in `global.json`, Node.js `24.20.0` in `.node-version`, and standalone WireMock `2.15.0` and ReportGenerator `5.5.11` in the local .NET tool manifest. Restore the relevant dependencies with `dotnet tool restore`, `dotnet restore`, and `npm ci` before verification; the backend coverage command performs its own .NET restores and does not require npm. Postman API verification also requires Postman CLI to be available as `postman` on `PATH`.
 
 ## Backend
 
@@ -591,6 +603,28 @@ The full solution may also be tested where appropriate:
 
 ```powershell
 dotnet test WeatherApp.slnx
+```
+
+### Backend reports and coverage gate
+
+Use this command for backend changes:
+
+```powershell
+node scripts/test-backend.mjs
+```
+
+It restores dependencies, builds in Release, runs the backend tests, generates
+local reports, and enforces the global backend floors above. Ordinary
+`dotnet test` remains available but does not enforce coverage. Preserve failing
+test exit codes and attempt reporting after test failures when coverage exists.
+Run one invocation at a time; each run replaces the dedicated reports directory.
+See [the README](README.md#backend-reports-and-coverage-gate) for scope,
+report paths, and diagnosis.
+
+When changing the runner, also run its focused tests:
+
+```powershell
+node --test scripts/test-backend.test.mjs
 ```
 
 ## Frontend

@@ -3,6 +3,8 @@ obj/
 node_modules/
 dist/
 coverage/
+TestResults/
+tests/WeatherApp.Api.Tests/reports/
 tests/WeatherApp.Postman/reports/
 tests/WeatherApp.E2E/reports/
 tests/WeatherApp.E2E/test-results/
