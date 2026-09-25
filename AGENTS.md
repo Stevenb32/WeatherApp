@@ -489,15 +489,19 @@ Milestone 3's global minimum coverage floors are:
 | Codebase | Lines | Branches | Functions | Statements | Status |
 | -------- | ----: | -------: | --------: | ---------: | ------ |
 | Backend  |   80% |      70% | Not gated |  Not gated | Enforced by the backend verification command |
-| Frontend |   80% |      75% |       80% |        80% | Planned |
+| Frontend |   80% |      75% |       80% |        80% | Enforced by `npm run test:coverage` |
 
 Backend coverage must include the handwritten production API, including startup,
 options, mapping, orchestration, and auto-properties. Do not add exclusions or
 lower thresholds merely to make the gate pass. Missing or invalid coverage
 must fail verification rather than silently bypassing the gate.
 
-Frontend floors remain planned; do not enforce them before the corresponding
-GitHub Issue introduces the gate.
+Frontend coverage uses V8 and must include all first-party production files
+matching `src/**/*.{ts,tsx}`, including unimported files and handwritten startup
+code. Exclude only tests, shared test utilities/setup, declarations, generated
+code, build output, and third-party code. Keep the four global floors fixed;
+do not enable automatic threshold rewriting or lower the floors to make a run
+pass.
 
 Preserve these principles:
 
@@ -659,11 +663,23 @@ npm test
 npm run test:watch
 ```
 
-### Run frontend coverage
+### Frontend reports and coverage gate
 
 ```powershell
 npm run test:coverage
 ```
+
+Use this command for frontend changes. It runs the complete suite, generates V8
+coverage reports, and enforces the global frontend floors above. Ordinary
+`npm test` remains a one-time run with console and JUnit results but does not
+enforce coverage. Preserve failing exit codes and coverage reporting after test
+failures; keep zero automatic retries.
+
+Keep generated `src/WeatherApp.Ui/reports/` and `src/WeatherApp.Ui/coverage/`
+output ignored by Git. Run one frontend test command at a time because reports
+share output paths. The [root README's frontend section](README.md#frontend)
+is the authoritative reference for commands, source scope, report locations,
+replacement behavior, and diagnosis.
 
 ### Lint
 

@@ -32,8 +32,26 @@ export default defineConfig({
     setupFiles: './src/test/setup.ts',
     restoreMocks: true,
     unstubGlobals: true,
+    retry: 0,
+    reporters: ['default', 'junit'],
+    outputFile: {
+      junit: './reports/junit/results.xml',
+    },
     coverage: {
       provider: 'v8',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['**/*.{test,spec}.{ts,tsx}', 'src/test/**', '**/*.d.ts'],
+      reportsDirectory: './coverage',
+      reporter: ['text-summary', 'html', 'lcovonly', 'json-summary'],
+      reportOnFailure: true,
+      thresholds: {
+        lines: 80,
+        branches: 75,
+        functions: 80,
+        statements: 80,
+        perFile: false,
+        autoUpdate: false,
+      },
     },
   },
 })
