@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <!-- Measure all types in the production API assembly, including startup and options. -->
+          <Include>[WeatherApp.Api]*</Include>
+          <IncludeTestAssembly>false</IncludeTestAssembly>
+          <ExcludeByFile>**/obj/**,**/bin/**</ExcludeByFile>
+          <!-- Keep CompilerGeneratedAttribute included: async methods and lambdas represent handwritten code. -->
+          <ExcludeByAttribute>GeneratedCodeAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
+          <SkipAutoProps>false</SkipAutoProps>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>
