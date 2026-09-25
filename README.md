@@ -42,6 +42,7 @@ The frontend currently includes:
 * Tailwind CSS through its official Vite plugin
 * A same-origin local development proxy for relative `/api` requests
 * Component testing with Vitest, jsdom, and React Testing Library
+* Local frontend test reports and global V8 coverage gates
 * Full-stack Chromium journeys and Firefox/WebKit smoke coverage in a separate Playwright test project
 
 ## API
@@ -350,17 +351,98 @@ required for this local verification.
 
 ### Frontend
 
-Run frontend commands from `src/WeatherApp.Ui`:
+Run frontend commands from `src/WeatherApp.Ui` using the pinned Node.js
+`24.20.0`. Restore dependencies from the checked-in lockfile:
+
+```powershell
+npm ci
+```
+
+Run the one-time verification commands:
 
 ```powershell
 npm test
-npm run test:watch
 npm run test:coverage
 npm run lint
 npm run build
 ```
 
-`npm test` runs the component tests once and exits. `npm run test:watch` stays active and reruns tests as files change. `npm run test:coverage` generates V8 coverage without enforcing a numerical threshold.
+`npm test` runs the service, component, and interaction tests once, prints readable
+Vitest results, and writes JUnit XML. It does not collect coverage or enforce
+coverage floors. For interactive development, `npm run test:watch` stays active
+and reruns tests as files change; stop it with Ctrl+C. Tests use zero automatic
+retries and mocked service or fetch boundaries, so they need no running API,
+WeatherAPI credential, or real network requests.
+
+#### Frontend reports and coverage gate
+
+`npm run test:coverage` runs the same complete suite with V8 coverage, writes
+reports, and enforces these fixed global minimums:
+
+| Metric | Minimum | What it measures |
+| --- | ---: | --- |
+| Lines | 80% | Executable source lines that ran |
+| Branches | 75% | Decision outcomes that ran |
+| Functions | 80% | Functions that were called |
+| Statements | 80% | Executable statements that ran |
+
+The floors apply across the production frontend, not to individual files or only
+changed lines. Thresholds do not update automatically. Coverage measures execution,
+not assertion quality; use uncovered code to find meaningful test gaps rather
+than targeting 100%, lowering floors, or excluding handwritten code.
+
+The [Vitest configuration](src/WeatherApp.Ui/vite.config.ts) explicitly includes
+`src/**/*.{ts,tsx}`, including files that no test imports and the handwritten
+`src/main.tsx` entry point. Coverage excludes:
+
+* Test/spec files matching `**/*.{test,spec}.{ts,tsx}`.
+* Shared test utilities and setup under `src/test/**`.
+* Type declarations matching `**/*.d.ts`.
+* Vitest's built-in exclusions, including test files, setup, configuration,
+  virtual modules, and dependencies under `node_modules`.
+
+Build output and generated assets under `dist/` are outside the included source
+tree. There are currently no generated TypeScript/TSX source files under `src`.
+Handwritten components, services, and production types remain included. A
+type-only file can appear with zero executable items because TypeScript erases
+its types; this is different from an executable file with uncovered statements.
+
+All generated reports are local and ignored by Git. Paths below are relative to
+`src/WeatherApp.Ui`:
+
+| Report | Path | Purpose |
+| --- | --- | --- |
+| Test results and coverage summary | Terminal output | Test outcomes and the four coverage totals |
+| JUnit XML | `reports/junit/results.xml` | Individual test results and assertion failure details |
+| HTML coverage | `coverage/index.html` | Browse coverage by directory, file, and source line |
+| LCOV | `coverage/lcov.info` | Machine-readable source coverage |
+| JSON summary | `coverage/coverage-summary.json` | Global and per-file coverage counts and percentages |
+
+Open `coverage/index.html` in your browser after a coverage run. Start with the
+global totals, then follow directory and file links to inspect uncovered lines
+and branches. Review the file list for missing production code or included test
+support. The JSON summary exposes `total.lines`, `total.branches`,
+`total.functions`, and `total.statements`, each with `total`, `covered`, and `pct`
+values suitable for a future GitHub job summary.
+
+Each test run overwrites the JUnit file. Each coverage run also cleans and
+replaces the `coverage/` directory; an ordinary test run does not refresh coverage
+reports. Run one frontend test command at a time and copy any evidence you need
+to retain before another run replaces it.
+
+A passing coverage command exits with code `0`. An assertion failure or coverage
+below any floor produces a nonzero exit. All tests can pass while the coverage
+gate fails: inspect the console's named metric and the coverage reports in that
+case. For failed tests, start with the console or JUnit failure details. Coverage
+reporting after test failures is enabled, and report generation does not turn a
+failed test run into a success. Startup failures or process crashes can prevent
+reports from being completed; do not assume an older report describes that run.
+
+Playwright checks browser and full-stack behavior in its separate project; it
+does not instrument application code for coverage. Its results are not merged
+with Vitest coverage, so these floors measure the designated service/component
+test layer. Postman also remains separate. No CI workflow, artifact upload, or
+external reporting service is introduced by this local coverage command.
 
 ### Postman API
 
