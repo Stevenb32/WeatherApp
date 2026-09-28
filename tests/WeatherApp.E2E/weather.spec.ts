@@ -29,7 +29,7 @@ test('Tampa imperial search', async ({ page }) => {
 
   const hourly = results.getByRole('region', { name: 'Next 24 hours', exact: true })
   const hours = hourly.getByRole('list').getByRole('listitem')
-  await expect(hours).toHaveCount(25) // Deliberate CI failure for issue #32 verification.
+  await expect(hours).toHaveCount(24)
 
   const representativeHours = [
     { index: 0, time: '21:00' },
