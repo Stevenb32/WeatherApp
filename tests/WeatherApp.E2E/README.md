@@ -346,5 +346,6 @@ establish formal accessibility conformance. Stop the environment with Ctrl+C and
 confirm its three ports are released when finished.
 
 The broader backend and frontend verification commands remain in the
-[root README](../../README.md#verification). CI workflows have not yet been
-introduced.
+[root README](../../README.md#verification). The
+[CI workflow](../../README.md#github-actions-ci) runs this complete suite in
+its independent Playwright E2E job.

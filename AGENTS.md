@@ -932,11 +932,8 @@ Clean up merged branches after confirming `main` contains the merged work.
 
 # GitHub Actions and Quality Gates
 
-Milestone 3 will establish GitHub Actions as the automated verification system for pull requests and pushes to `main`.
-
-Until the GitHub Actions issue is implemented, do not document planned CI behavior as though it already exists.
-
-Once introduced, the milestone's quality-gate design is:
+The repository-owned `.github/workflows/ci.yml` verifies pull requests targeting
+`main`, pushes to `main`, and manual dispatch. It runs four independent jobs:
 
 ```text
 Backend
@@ -947,9 +944,15 @@ Playwright E2E
 Quality Gate
 ```
 
-The final `Quality Gate` is intended to become the single required status check protecting `main`.
+The final `Quality Gate` runs after all four jobs and passes only when all four
+succeed. It is the stable check intended for `main` branch protection; making it
+required belongs to the later M3-8 issue.
 
 Individual implementation jobs may evolve internally, but the final gate should remain the stable branch-protection contract.
+
+When changing the gate, run `node --test scripts/ci-quality-gate.test.mjs` and
+validate workflow syntax. The gate tests execute its actual shell script with
+controlled dependency results.
 
 Required verification jobs must not depend on servers or state created by another job.
 
