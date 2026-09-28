@@ -1,0 +1,451 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: 'true'
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      BACKEND_ARTIFACT_NAME: backend-test-results-attempt-${{ github.run_attempt }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+
+      - name: Test verification scripts
+        run: node --test scripts/test-backend.test.mjs scripts/ci-report.test.mjs scripts/ci-quality-gate.test.mjs
+
+      # The runner owns restore, Release build, tests, reports, and coverage floors.
+      - name: Verify backend
+        id: backend_verification
+        run: node scripts/test-backend.mjs
+
+      - name: Upload backend reports
+        if: always() && (steps.backend_verification.outcome == 'success' || hashFiles('tests/WeatherApp.Api.Tests/reports/**') != '')
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ env.BACKEND_ARTIFACT_NAME }}
+          path: tests/WeatherApp.Api.Tests/reports/
+          retention-days: 14
+          if-no-files-found: ${{ steps.backend_verification.outcome == 'success' && 'error' || 'warn' }}
+
+      - name: Summarize backend
+        if: always()
+        shell: pwsh
+        env:
+          TEST_OUTCOME: ${{ steps.backend_verification.outcome || 'skipped' }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if (Test-Path -LiteralPath ./scripts/ci-report.ps1 -PathType Leaf) {
+            ./scripts/ci-report.ps1 -Mode Summary -Layer backend `
+              -TestOutcome $env:TEST_OUTCOME -JobStatus $env:JOB_STATUS `
+              -ArtifactNames $env:BACKEND_ARTIFACT_NAME
+            exit $LASTEXITCODE
+          }
+
+          # Checkout can fail before the repository-owned helper is available.
+          @(
+            '## Backend'
+            ''
+            "Result: **$env:JOB_STATUS**. Verification command: **$env:TEST_OUTCOME**."
+            ''
+            'Test counts and coverage unavailable. Inspect checkout and setup logs.'
+            "Artifact name: $env:BACKEND_ARTIFACT_NAME (see upload step for availability)."
+          ) | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      FRONTEND_ARTIFACT_NAME: frontend-test-results-attempt-${{ github.run_attempt }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: src/WeatherApp.Ui/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: src/WeatherApp.Ui
+        run: npm ci
+
+      - name: Lint frontend
+        working-directory: src/WeatherApp.Ui
+        run: npm run lint
+
+      - name: Test frontend with coverage
+        id: frontend_tests
+        working-directory: src/WeatherApp.Ui
+        run: npm run test:coverage
+
+      - name: Build frontend
+        working-directory: src/WeatherApp.Ui
+        run: npm run build
+
+      - name: Validate frontend reports
+        if: always() && (steps.frontend_tests.outcome == 'success' || steps.frontend_tests.outcome == 'failure')
+        shell: pwsh
+        env:
+          TEST_OUTCOME: ${{ steps.frontend_tests.outcome }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          ./scripts/ci-report.ps1 -Mode Validate -Layer frontend `
+            -TestOutcome $env:TEST_OUTCOME -JobStatus $env:JOB_STATUS
+
+      - name: Upload frontend reports
+        if: always() && (steps.frontend_tests.outcome == 'success' || hashFiles('src/WeatherApp.Ui/reports/**', 'src/WeatherApp.Ui/coverage/**') != '')
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ env.FRONTEND_ARTIFACT_NAME }}
+          path: |
+            src/WeatherApp.Ui/reports/
+            src/WeatherApp.Ui/coverage/
+          retention-days: 14
+          if-no-files-found: ${{ steps.frontend_tests.outcome == 'success' && 'error' || 'warn' }}
+
+      - name: Summarize frontend
+        if: always()
+        shell: pwsh
+        env:
+          TEST_OUTCOME: ${{ steps.frontend_tests.outcome || 'skipped' }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if (Test-Path -LiteralPath ./scripts/ci-report.ps1 -PathType Leaf) {
+            ./scripts/ci-report.ps1 -Mode Summary -Layer frontend `
+              -TestOutcome $env:TEST_OUTCOME -JobStatus $env:JOB_STATUS `
+              -ArtifactNames $env:FRONTEND_ARTIFACT_NAME
+            exit $LASTEXITCODE
+          }
+
+          # Checkout can fail before the repository-owned helper is available.
+          @(
+            '## Frontend'
+            ''
+            "Result: **$env:JOB_STATUS**. Verification command: **$env:TEST_OUTCOME**."
+            ''
+            'Test counts and coverage unavailable. Inspect checkout and setup logs.'
+            "Artifact name: $env:FRONTEND_ARTIFACT_NAME (see upload step for availability)."
+          ) | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+  postman_api:
+    name: Postman API
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      POSTMAN_ARTIFACT_NAME: postman-api-report-attempt-${{ github.run_attempt }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: src/WeatherApp.Ui/package-lock.json
+
+      - name: Restore local .NET tools
+        run: dotnet tool restore
+
+      - name: Install UI dependencies for the shared environment
+        working-directory: src/WeatherApp.Ui
+        run: npm ci
+
+      # The official action changes Node versions; use its official npm distribution directly.
+      - name: Install pinned Postman CLI
+        run: |
+          npm install --global postman-cli@1.19.4
+          test "$(postman --version)" = '1.19.4'
+
+      - name: Test Postman lifecycle wiring
+        run: node --test scripts/ci-postman.test.mjs
+
+      - name: Run Postman against the shared environment
+        id: postman_tests
+        shell: bash
+        run: |
+          reports=tests/WeatherApp.Postman/reports
+          mkdir -p "$reports"
+          echo 'collection_started=false' >> "$GITHUB_OUTPUT"
+          environment_pid=''
+
+          cleanup() {
+            result=$?
+            trap - EXIT INT TERM
+            set +e
+            cleanup_result=0
+            if [[ -n "$environment_pid" ]]; then
+              if kill -0 "$environment_pid" 2>/dev/null; then
+                kill -TERM "$environment_pid"
+                wait "$environment_pid"
+                cleanup_result=$?
+              else
+                wait "$environment_pid"
+                cleanup_result=$?
+                # Even a zero exit is unexpected before we request shutdown.
+                if [[ "$cleanup_result" -eq 0 ]]; then cleanup_result=1; fi
+              fi
+            fi
+            echo "Verification exit: $result; environment cleanup exit: $cleanup_result" > "$reports/cleanup.log"
+            cat "$reports/environment.log" "$reports/cleanup.log"
+            if [[ -f "$reports/collection.log" ]]; then cat "$reports/collection.log"; fi
+            if [[ "$result" -eq 0 && "$cleanup_result" -ne 0 ]]; then result=$cleanup_result; fi
+            exit "$result"
+          }
+          trap cleanup EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+
+          # This runner owns builds, readiness, provider isolation, and all service teardown.
+          node scripts/test-environment.mjs serve > "$reports/environment.log" 2>&1 &
+          environment_pid=$!
+          deadline=$(($(date +%s) + 180))
+          while true; do
+            if ! kill -0 "$environment_pid" 2>/dev/null; then
+              echo 'Environment exited before collection execution.' | tee -a "$reports/environment.log" >&2
+              exit 1
+            fi
+            if grep -Fq '[environment] Deterministic test environment is ready.' "$reports/environment.log"; then break; fi
+            if [[ "$(date +%s)" -ge "$deadline" ]]; then
+              echo 'Environment did not become ready within 180 seconds.' | tee -a "$reports/environment.log" >&2
+              exit 1
+            fi
+            sleep 0.2
+          done
+
+          echo 'collection_started=true' >> "$GITHUB_OUTPUT"
+          postman collection run tests/WeatherApp.Postman/WeatherApp.postman_collection.json \
+            --environment tests/WeatherApp.Postman/WeatherApp.local.postman_environment.json \
+            --reporters cli,junit,html \
+            --reporter-junit-export "$reports/postman-results.xml" \
+            --reporter-html-export "$reports/postman-report.html" \
+            --timeout 30000 --timeout-request 5000 --timeout-script 5000 \
+            --color off > "$reports/collection.log" 2>&1
+
+      - name: Validate Postman reports
+        if: always() && steps.postman_tests.outputs.collection_started == 'true'
+        shell: pwsh
+        env:
+          TEST_OUTCOME: ${{ steps.postman_tests.outcome }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          ./scripts/ci-report.ps1 -Mode Validate -Layer postman `
+            -TestOutcome $env:TEST_OUTCOME -JobStatus $env:JOB_STATUS
+
+      - name: Upload Postman reports and diagnostics
+        if: always() && (steps.postman_tests.outcome == 'success' || hashFiles('tests/WeatherApp.Postman/reports/**') != '')
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ env.POSTMAN_ARTIFACT_NAME }}
+          path: tests/WeatherApp.Postman/reports/
+          retention-days: 14
+          if-no-files-found: ${{ steps.postman_tests.outcome == 'success' && 'error' || 'warn' }}
+
+      - name: Summarize Postman
+        if: always()
+        shell: pwsh
+        env:
+          TEST_OUTCOME: ${{ steps.postman_tests.outputs.collection_started == 'true' && steps.postman_tests.outcome || 'skipped' }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if (Test-Path -LiteralPath ./scripts/ci-report.ps1 -PathType Leaf) {
+            ./scripts/ci-report.ps1 -Mode Summary -Layer postman `
+              -TestOutcome $env:TEST_OUTCOME -JobStatus $env:JOB_STATUS `
+              -ArtifactNames $env:POSTMAN_ARTIFACT_NAME
+            exit $LASTEXITCODE
+          }
+
+          # Checkout can fail before the repository-owned helper is available.
+          @(
+            '## Postman API'
+            ''
+            "Result: **$env:JOB_STATUS**. Verification command: **$env:TEST_OUTCOME**."
+            ''
+            'Test counts unavailable. Inspect checkout and setup logs.'
+            "Artifact name: $env:POSTMAN_ARTIFACT_NAME (see upload step for availability)."
+          ) | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+  playwright_e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PLAYWRIGHT_REPORT_NAME: playwright-report-attempt-${{ github.run_attempt }}
+      PLAYWRIGHT_EVIDENCE_NAME: playwright-failure-evidence-attempt-${{ github.run_attempt }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: |
+            src/WeatherApp.Ui/package-lock.json
+            tests/WeatherApp.E2E/package-lock.json
+
+      - name: Restore local .NET tools
+        run: dotnet tool restore
+
+      - name: Install UI dependencies
+        working-directory: src/WeatherApp.Ui
+        run: npm ci
+
+      - name: Install Playwright dependencies
+        working-directory: tests/WeatherApp.E2E
+        run: npm ci
+
+      - name: Install browsers and Linux dependencies
+        working-directory: tests/WeatherApp.E2E
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Typecheck Playwright tests
+        working-directory: tests/WeatherApp.E2E
+        run: npm run typecheck
+
+      # Playwright's webServer owns the shared stack, including builds and teardown.
+      - name: Run Playwright suite
+        id: playwright_tests
+        working-directory: tests/WeatherApp.E2E
+        run: npm test
+
+      - name: Validate Playwright reports
+        if: always() && (steps.playwright_tests.outcome == 'success' || steps.playwright_tests.outcome == 'failure')
+        shell: pwsh
+        env:
+          TEST_OUTCOME: ${{ steps.playwright_tests.outcome }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          ./scripts/ci-report.ps1 -Mode Validate -Layer playwright `
+            -TestOutcome $env:TEST_OUTCOME -JobStatus $env:JOB_STATUS
+
+      - name: Upload Playwright reports
+        if: always() && (steps.playwright_tests.outcome == 'success' || hashFiles('tests/WeatherApp.E2E/reports/**') != '')
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ env.PLAYWRIGHT_REPORT_NAME }}
+          # Keep HTML data/ attachments so the downloaded report remains usable.
+          path: tests/WeatherApp.E2E/reports/
+          retention-days: 14
+          if-no-files-found: ${{ steps.playwright_tests.outcome == 'success' && 'error' || 'warn' }}
+
+      - name: Upload Playwright failure evidence
+        if: always() && steps.playwright_tests.outcome == 'failure' && hashFiles('tests/WeatherApp.E2E/test-results/**/*.zip', 'tests/WeatherApp.E2E/test-results/**/*.png', 'tests/WeatherApp.E2E/test-results/**/*.webm') != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ env.PLAYWRIGHT_EVIDENCE_NAME }}
+          path: tests/WeatherApp.E2E/test-results/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Summarize Playwright
+        if: always()
+        shell: pwsh
+        env:
+          TEST_OUTCOME: ${{ steps.playwright_tests.outcome || 'skipped' }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if (Test-Path -LiteralPath ./scripts/ci-report.ps1 -PathType Leaf) {
+            ./scripts/ci-report.ps1 -Mode Summary -Layer playwright `
+              -TestOutcome $env:TEST_OUTCOME -JobStatus $env:JOB_STATUS `
+              -ArtifactNames @($env:PLAYWRIGHT_REPORT_NAME, $env:PLAYWRIGHT_EVIDENCE_NAME)
+            exit $LASTEXITCODE
+          }
+
+          # Checkout can fail before the repository-owned helper is available.
+          @(
+            '## Playwright E2E'
+            ''
+            "Result: **$env:JOB_STATUS**. Verification command: **$env:TEST_OUTCOME**."
+            ''
+            'Test counts unavailable. Inspect checkout and setup logs.'
+            "Artifact names: $env:PLAYWRIGHT_REPORT_NAME, $env:PLAYWRIGHT_EVIDENCE_NAME (see upload steps for availability)."
+          ) | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+  quality_gate:
+    name: Quality Gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    needs: [backend, frontend, postman_api, playwright_e2e]
+    if: always()
+    steps:
+      - name: Evaluate verification jobs
+        shell: bash
+        env:
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          POSTMAN_RESULT: ${{ needs.postman_api.result }}
+          PLAYWRIGHT_RESULT: ${{ needs.playwright_e2e.result }}
+        run: |
+          printf '## Quality Gate\n\n| Job | Result |\n| --- | --- |\n' >> "$GITHUB_STEP_SUMMARY"
+          failed=0
+          for entry in \
+            "Backend:$BACKEND_RESULT" \
+            "Frontend:$FRONTEND_RESULT" \
+            "Postman API:$POSTMAN_RESULT" \
+            "Playwright E2E:$PLAYWRIGHT_RESULT"; do
+            job=${entry%%:*}
+            result=${entry#*:}
+            printf '| %s | `%s` |\n' "$job" "$result" >> "$GITHUB_STEP_SUMMARY"
+            if [[ "$result" != 'success' ]]; then failed=1; fi
+          done
+          if [[ "$failed" -ne 0 ]]; then
+            printf '\n**Result: failed.** Inspect the unsuccessful job summaries, logs, and retained artifacts.\n' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Quality Gate failed: every verification job must succeed.' >&2
+            exit 1
+          fi
+          printf '\n**Result: passed.** All four verification jobs succeeded.\n' >> "$GITHUB_STEP_SUMMARY"

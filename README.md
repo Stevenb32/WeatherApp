@@ -346,8 +346,8 @@ node --test scripts/test-backend.test.mjs
 
 These Node tests simulate .NET command results to exercise orchestration,
 failure handling, report validation, and stale-report cleanup. They complement
-the real backend run above. No CI workflow or external reporting service is
-required for this local verification.
+the real backend run above. No CI run or external reporting service is required
+for this local verification.
 
 ### Frontend
 
@@ -441,8 +441,8 @@ reports from being completed; do not assume an older report describes that run.
 Playwright checks browser and full-stack behavior in its separate project; it
 does not instrument application code for coverage. Its results are not merged
 with Vitest coverage, so these floors measure the designated service/component
-test layer. Postman also remains separate. No CI workflow, artifact upload, or
-external reporting service is introduced by this local coverage command.
+test layer. Postman also remains separate. This local command does not upload
+artifacts or use an external reporting service.
 
 ### Postman API
 
@@ -493,8 +493,7 @@ successful-search smoke; WebKit also checks page overflow. All 30 tests run with
 one worker and zero retries, and Playwright stops its processes. No WeatherAPI
 credential is needed. See the
 [E2E README](tests/WeatherApp.E2E/README.md) for focused commands, fixture behavior,
-and JUnit/HTML reports and retained failure evidence. CI workflows have not yet
-been introduced.
+and JUnit/HTML reports and retained failure evidence.
 
 ### Full stack
 
@@ -505,6 +504,46 @@ node scripts/test-environment.mjs verify
 ```
 
 Readiness polling is bounded and is used only to wait for processes. Smoke assertions have zero automatic retries.
+
+## GitHub Actions CI
+
+The [CI workflow](.github/workflows/ci.yml) runs for pull requests targeting
+`main`, pushes to `main`, and manual dispatch. It has no path filters. Newer
+runs for the same pull request or branch cancel superseded runs. All jobs use
+`ubuntu-24.04` and read-only repository permission.
+
+Four independent jobs run the repository's existing verification layers:
+
+| Job | Responsibility | Routine artifact |
+| --- | --- | --- |
+| Backend | Release build, xUnit tests, reports, and line/branch coverage floors | `backend-test-results-attempt-N` |
+| Frontend | Lint, coverage tests and floors, production build | `frontend-test-results-attempt-N` |
+| Postman API | Seven public API scenarios against the shared deterministic stack | `postman-api-report-attempt-N` |
+| Playwright E2E | Typecheck and all 30 Chromium, Firefox, and WebKit tests | `playwright-report-attempt-N` |
+
+`N` is the GitHub workflow attempt number. Routine artifacts are kept for 14
+days. If a Playwright test fails and produces a trace, screenshot, or video,
+`playwright-failure-evidence-attempt-N` retains that evidence for 30 days.
+Each job writes a result summary. The final **`Quality Gate`** runs after all
+four jobs, even when one fails, and passes only when every job succeeded. Its
+name is the intended stable branch-protection check; making it required belongs
+to the later M3-8 branch-protection issue.
+
+To inspect a run, open the repository's **Actions** tab, select **CI**, and
+open the run. Read the job summaries first, then the failed step's log. Download
+the named artifact from the run's **Artifacts** section to inspect JUnit, TRX,
+coverage, HTML, or browser evidence. A setup failure may have logs without a
+test report. The Postman and Playwright jobs each start and stop their own local
+WireMock/API/UI stack; neither contacts the real WeatherAPI.
+
+To start a manual run, open **Actions → CI → Run workflow**, choose the branch,
+and select **Run workflow**. GitHub makes manual dispatch available after the
+workflow exists on the default branch. This first workflow therefore cannot be
+manually dispatched until it has been merged to `main`.
+
+CI requires no configured repository or environment secrets, WeatherAPI key,
+or Postman API key. It verifies code and uploads diagnostic reports; it does not
+deploy or publish the application.
 
 ## Technology
 
@@ -525,5 +564,4 @@ Readiness polling is bounded and is used only to wait for processes. Smoke asser
 * Playwright
 * WeatherAPI
 
-CI/CD, containerization, and production deployment
-capabilities will be introduced incrementally as the project develops.
+Production deployment is outside the current milestone.
