@@ -9,6 +9,10 @@ using WeatherApp.Api.WeatherApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Configuration.AddKeyPerFile(
+    directoryPath: "/run/secrets",
+    optional: true);
+
 const string e2eEnvironmentName = "E2E";
 const string e2eWeatherApiBaseUrl = "http://127.0.0.1:9090/v1/";
 
@@ -110,7 +114,7 @@ builder.Services.AddHttpClient<WeatherApiClient>(
 
 var app = builder.Build();
 
-if (!isE2eEnvironment)
+if (builder.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }

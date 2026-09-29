@@ -22,13 +22,16 @@ public sealed class WeatherAppFactory : WebApplicationFactory<Program>
 
     private readonly TimeSpan _weatherRateLimitWindow;
 
+    private readonly string? _weatherApiKey;
+
     public WeatherAppFactory(
         string wireMockBaseUrl,
         TimeSpan? weatherApiTimeout = null,
         TimeSpan? weatherApiCacheDuration = null,
         ISystemClock? cacheClock = null,
         int? weatherRateLimitPermitLimit = null,
-        TimeSpan? weatherRateLimitWindow = null)
+        TimeSpan? weatherRateLimitWindow = null,
+        string? weatherApiKey = "test-api-key")
     {
         _wireMockBaseUrl = wireMockBaseUrl;
 
@@ -45,6 +48,8 @@ public sealed class WeatherAppFactory : WebApplicationFactory<Program>
 
         _weatherRateLimitWindow =
             weatherRateLimitWindow ?? TimeSpan.FromMinutes(1);
+
+        _weatherApiKey = weatherApiKey;
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -55,8 +60,6 @@ public sealed class WeatherAppFactory : WebApplicationFactory<Program>
             {
                 ["WeatherApi:BaseUrl"] =
                     $"{_wireMockBaseUrl.TrimEnd('/')}/v1/",
-
-                ["WeatherApi:ApiKey"] = "test-api-key",
 
                 ["WeatherApi:Timeout"] =
                     _weatherApiTimeout.ToString("c"),
@@ -70,6 +73,11 @@ public sealed class WeatherAppFactory : WebApplicationFactory<Program>
                 ["WeatherRateLimit:Window"] =
                     _weatherRateLimitWindow.ToString("c")
             };
+
+            if (_weatherApiKey is not null)
+            {
+                configurationValues["WeatherApi:ApiKey"] = _weatherApiKey;
+            }
 
             configurationBuilder.AddInMemoryCollection(
                 configurationValues);
