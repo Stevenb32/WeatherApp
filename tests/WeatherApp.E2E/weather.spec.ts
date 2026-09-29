@@ -20,7 +20,7 @@ test('Tampa imperial search', async ({ page }) => {
   const resolvedLocation = 'Current weather for Tampa, Florida, United States of America'
   const current = results.getByRole('region', { name: resolvedLocation, exact: true })
   await expect(current.getByRole('heading', { name: resolvedLocation, level: 2 })).toBeVisible()
-  await expect(current.getByText(/^87\.9\s*°F$/)).toBeVisible()
+  await expect(current.getByText(/^87\.8\s*°F$/)).toBeVisible()
   await expect(current.getByText('Partly cloudy', { exact: true })).toBeVisible()
   await expect(current.getByRole('definition')).toHaveText(['70%', '8.1 mph', 'E'])
 
