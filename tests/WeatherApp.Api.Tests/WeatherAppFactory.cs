@@ -61,8 +61,6 @@ public sealed class WeatherAppFactory : WebApplicationFactory<Program>
                 ["WeatherApi:BaseUrl"] =
                     $"{_wireMockBaseUrl.TrimEnd('/')}/v1/",
 
-                ["WeatherApi:ApiKey"] = _weatherApiKey,
-
                 ["WeatherApi:Timeout"] =
                     _weatherApiTimeout.ToString("c"),
 
@@ -75,6 +73,11 @@ public sealed class WeatherAppFactory : WebApplicationFactory<Program>
                 ["WeatherRateLimit:Window"] =
                     _weatherRateLimitWindow.ToString("c")
             };
+
+            if (_weatherApiKey is not null)
+            {
+                configurationValues["WeatherApi:ApiKey"] = _weatherApiKey;
+            }
 
             configurationBuilder.AddInMemoryCollection(
                 configurationValues);
