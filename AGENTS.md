@@ -17,7 +17,9 @@ Milestone 1 established the backend API foundation.
 
 Milestone 2 established the React MVP.
 
-Milestone 3 is focused on deterministic automated quality gates and CI.
+Milestone 3 established deterministic automated quality gates and CI.
+
+Milestone 4 is introducing production container images through its individual issues.
 
 Do not add product features or engineering infrastructure outside the active GitHub Issue unless they are required to satisfy that issue's acceptance criteria.
 
@@ -751,6 +753,10 @@ use the commands established by the corresponding issue and update repository
 documentation when they become part of the actual workflow.
 
 Do not invent commands for planned infrastructure that has not yet been implemented.
+
+## Production Images
+
+Build the API and UI Dockerfiles with the repository root as the context and pass a full commit SHA as `SOURCE_REVISION`. The final images must retain source and revision OCI labels, run as nonroot users, and listen on internal HTTP port `8080`. Keep the WeatherAPI key out of images; the API reads it from the nonroot-readable `/run/secrets/WeatherApi__ApiKey` mount. The UI serves static assets, while external routing owns `/api` forwarding. See [the README](README.md#production-images) for build commands and runtime details.
 
 ---
 

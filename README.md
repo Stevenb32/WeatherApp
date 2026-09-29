@@ -12,7 +12,9 @@ The backend uses an ASP.NET Core Minimal API to retrieve and process forecast da
 
 **Milestone 2 — React MVP: Complete**
 
-**Milestone 3 — Automated Quality Gates and CI: In progress**
+**Milestone 3 — Automated Quality Gates and CI: Complete**
+
+**Milestone 4 — Containerization and Deployment: In progress**
 
 The backend currently supports:
 
@@ -157,6 +159,20 @@ npm run dev
 The UI is available at `http://localhost:5173`.
 
 During local development, the frontend uses relative paths such as `/api/weather`. Vite receives those requests on port `5173` and forwards them unchanged to the API at `https://localhost:7001`. The browser does not need a separate API base URL or a direct-development CORS policy, and the WeatherAPI key remains on the backend.
+
+## Production Images
+
+The API and UI have separate production Dockerfiles. Build both from the repository root so Docker can use the root `.dockerignore` and the API build can read `global.json`:
+
+```powershell
+$revision = git rev-parse HEAD
+docker build --file src/WeatherApp.Api/Dockerfile --build-arg SOURCE_REVISION=$revision --tag weatherapp-api:local .
+docker build --file src/WeatherApp.Ui/Dockerfile --build-arg SOURCE_REVISION=$revision --tag weatherapp-ui:local .
+```
+
+`SOURCE_REVISION` must be a full, lowercase 40-character commit SHA. Both final images label their source repository and revision. Build from a committed checkout when that label must identify the exact source: uncommitted changes are not represented by `git rev-parse HEAD`.
+
+Both containers listen on internal HTTP port `8080` and run as nonroot users. The API reads a WeatherAPI key from a file mounted at `/run/secrets/WeatherApi__ApiKey`; the mount must be readable by its nonroot process. Keep the key outside the repository and out of image build arguments. API startup fails if the key is missing or blank. The UI serves only the built static assets and uses a relative `/api/weather` URL. A routing layer outside these images must send `/api` requests to the API; the UI image does not proxy them. The complete local container stack and public routing belong to later issues.
 
 ## Deterministic Full-Stack Test Environment
 

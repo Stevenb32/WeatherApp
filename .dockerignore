@@ -1,0 +1,31 @@
+# Both image builds use the repository root as their context.
+*
+!global.json
+!src
+!src/WeatherApp.Api
+!src/WeatherApp.Api/**
+!src/WeatherApp.Ui
+!src/WeatherApp.Ui/**
+
+# Local secrets and environment-specific API settings stay out of the context.
+**/.env*
+**/secrets
+**/appsettings.*.json
+
+# Dependencies, generated output, and test-only files are not build inputs.
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/dist-ssr
+**/coverage
+**/reports
+**/TestResults
+**/test-results
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+src/WeatherApp.Ui/src/test
+src/WeatherApp.Api/Properties/launchSettings.json
+src/WeatherApp.Api/WeatherApp.Api.http
