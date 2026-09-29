@@ -152,6 +152,20 @@ async function validateReports() {
     }
   }
 
+  const trx = await readFile(path.join(resultsDirectory, 'backend-tests.trx'), 'utf8')
+  const counters = [...trx.matchAll(/<Counters\b([^>]*)\/?\s*>/g)]
+  if (counters.length !== 1) {
+    throw new Error('Backend TRX must contain exactly one test counter summary.')
+  }
+  const notExecuted = counters[0][1].match(/\bnotExecuted="(\d+)"/)
+  const skipped = Number(notExecuted?.[1])
+  if (!notExecuted || !Number.isSafeInteger(skipped)) {
+    throw new Error('Backend TRX is missing a valid notExecuted test count.')
+  }
+  if (skipped !== 0) {
+    throw new Error(`Backend TRX reports ${skipped} skipped or not-executed test(s).`)
+  }
+
   let report
   try {
     report = JSON.parse(await readFile(path.join(coverageDirectory, 'Summary.json'), 'utf8'))

@@ -1,5 +1,7 @@
 # WeatherApp
 
+[![CI](https://github.com/Stevenb32/WeatherApp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Stevenb32/WeatherApp/actions/workflows/ci.yml?query=branch%3Amain)
+
 WeatherApp is an in-progress full-stack weather application built as a portfolio and learning project focused on software development, QA automation, SDET practices, DevOps, and agentic engineering workflows.
 
 The backend uses an ASP.NET Core Minimal API to retrieve and process forecast data from [WeatherAPI](https://www.weatherapi.com/). The frontend uses React, TypeScript, and Vite and is being developed incrementally to present that data to users.
@@ -80,9 +82,8 @@ Requirements:
 
 * .NET SDK 10.0.303, pinned by `global.json`
 * Node.js 24.20.0, pinned by `.node-version`
-* npm, using the checked-in `package-lock.json`
-* Postman CLI, available as `postman` on `PATH`, for the API test suite
-* A WeatherAPI API key for live local development; automated tests use deterministic fixtures
+* npm, using the checked-in UI lockfile for local development
+* A WeatherAPI API key for live local development; automated tests use deterministic fixtures and need no provider key
 
 ### Install dependencies
 
@@ -253,13 +254,24 @@ The unexpected-child-exit check stops the API after readiness and exercises the 
 
 ## Verification
 
+For a fresh checkout, use the pinned .NET SDK and Node.js versions above. Run
+the backend, frontend, deterministic full-stack smoke, Postman, and Playwright
+sections below in order. Restore the local .NET tools with `dotnet tool restore`
+and solution packages with `dotnet restore WeatherApp.slnx` before the first
+build. Install each Node project's dependencies with `npm ci` as shown below.
+The live-development HTTPS certificate and WeatherAPI key are not needed for
+automated verification. Stop the Postman environment before starting Playwright:
+both suites use the same fixed ports, and Playwright owns its own processes.
+Generated reports and browser evidence remain under the ignored paths listed
+in each section.
+
 ### Backend
 
-Build the solution and run the backend tests from the repository root:
+Build the solution and run the backend tests in Release from the repository root:
 
 ```powershell
-dotnet build WeatherApp.slnx
-dotnet test WeatherApp.slnx
+dotnet build WeatherApp.slnx --configuration Release
+dotnet test WeatherApp.slnx --configuration Release --no-build
 ```
 
 The integration tests use WireMock.Net to simulate WeatherAPI responses without calling the real provider.
@@ -287,8 +299,9 @@ The command performs these steps in order:
    Cobertura coverage with the checked-in runsettings.
 4. Copy the coverage attachment to a stable path and run ReportGenerator to
    produce HTML, Markdown, and JSON summaries and enforce the coverage floors.
-5. Validate that the required reports exist and that the summary contains
-   usable coverage counts for the production API assembly.
+5. Validate that the required reports exist, the TRX has no skipped or
+   not-executed tests, and the summary contains usable coverage counts for the
+   production API assembly.
 
 The global minimums are **80% line coverage** and **70% branch coverage**.
 Line coverage measures which executable lines ran; branch coverage measures
@@ -330,11 +343,12 @@ coverage command at a time.
 A successful command exits with code `0`. Restore or build failures stop the
 workflow early. If tests fail, the runner still attempts report generation when
 coverage is available and preserves the test process's nonzero exit code.
-Coverage below either floor, reporting failures, and missing or invalid report
-data also produce a nonzero exit. Use the named console stage to locate the
-failure, TRX for test failures, and the coverage reports for missed lines or
-branches. Inspect retained evidence before the next run replaces it. Tests have
-zero automatic retries; each .NET command has a ten-minute timeout.
+Skipped or not-executed tests, coverage below either floor, reporting failures,
+and missing or invalid report data also produce a nonzero exit. Use the named
+console stage to locate the failure, TRX for test failures, and coverage reports
+for missed lines or branches. Inspect retained evidence before the next run
+replaces it. Tests have zero automatic retries; each .NET command has a
+ten-minute timeout.
 
 The ordinary `dotnet test WeatherApp.slnx` command remains available for a quick
 test run; it does not enforce these coverage floors. When changing the backend
@@ -370,9 +384,14 @@ npm run build
 `npm test` runs the service, component, and interaction tests once, prints readable
 Vitest results, and writes JUnit XML. It does not collect coverage or enforce
 coverage floors. For interactive development, `npm run test:watch` stays active
-and reruns tests as files change; stop it with Ctrl+C. Tests use zero automatic
-retries and mocked service or fetch boundaries, so they need no running API,
-WeatherAPI credential, or real network requests.
+and reruns tests as files change; stop it with Ctrl+C:
+
+```powershell
+npm run test:watch
+```
+
+Tests use zero automatic retries and mocked service or fetch boundaries, so
+they need no running API, WeatherAPI credential, or real network requests.
 
 #### Frontend reports and coverage gate
 
@@ -444,7 +463,28 @@ with Vitest coverage, so these floors measure the designated service/component
 test layer. Postman also remains separate. This local command does not upload
 artifacts or use an external reporting service.
 
+### Full stack
+
+Run the deterministic full-stack smoke contract from the repository root:
+
+```powershell
+node scripts/test-environment.mjs verify
+```
+
+Readiness polling is bounded and is used only to wait for processes. Smoke assertions have zero automatic retries.
+
 ### Postman API
+
+Install the same pinned Postman CLI version used in CI if `postman --version`
+does not report `1.19.4`, then confirm its version:
+
+```powershell
+npm install --global postman-cli@1.19.4
+postman --version
+```
+
+The expected version is `1.19.4`. The suite reads only its checked-in collection
+and environment files; it needs no Postman login, API key, or cloud workspace.
 
 Start the deterministic environment from the repository root in one terminal:
 
@@ -476,14 +516,22 @@ report details.
 
 ### Playwright E2E
 
-After the [one-time E2E setup](tests/WeatherApp.E2E/README.md#setup), run from the
-repository root:
+After installing the UI dependencies in the frontend section, install the E2E
+dependencies and the browsers selected by the locked Playwright version. Run
+from the repository root:
 
 ```powershell
+npm ci --prefix tests/WeatherApp.E2E
 cd tests/WeatherApp.E2E
+npx playwright install chromium firefox webkit
 npm run typecheck
 npm test
 ```
+
+Linux machines that need browser system libraries should use the
+[`--with-deps` setup command](tests/WeatherApp.E2E/README.md#setup). The
+[browser matrix](tests/WeatherApp.E2E/README.md#browser-matrix) documents the
+individual Chromium, Firefox, and WebKit project commands.
 
 Playwright builds and starts the production UI, real API, and shared WireMock
 environment, runs five independent Chromium journeys (including keyboard and
@@ -494,16 +542,6 @@ one worker and zero retries, and Playwright stops its processes. No WeatherAPI
 credential is needed. See the
 [E2E README](tests/WeatherApp.E2E/README.md) for focused commands, fixture behavior,
 and JUnit/HTML reports and retained failure evidence.
-
-### Full stack
-
-Run the deterministic full-stack smoke contract from the repository root:
-
-```powershell
-node scripts/test-environment.mjs verify
-```
-
-Readiness polling is bounded and is used only to wait for processes. Smoke assertions have zero automatic retries.
 
 ## GitHub Actions CI
 
@@ -526,24 +564,56 @@ days. If a Playwright test fails and produces a trace, screenshot, or video,
 `playwright-failure-evidence-attempt-N` retains that evidence for 30 days.
 Each job writes a result summary. The final **`Quality Gate`** runs after all
 four jobs, even when one fails, and passes only when every job succeeded. Its
-name is the intended stable branch-protection check; making it required belongs
-to the later M3-8 branch-protection issue.
+name is the stable branch-protection check. The existing `Main Branch Protection`
+ruleset requires this check from GitHub Actions for changes to `main`.
 
-To inspect a run, open the repository's **Actions** tab, select **CI**, and
-open the run. Read the job summaries first, then the failed step's log. Download
-the named artifact from the run's **Artifacts** section to inspect JUnit, TRX,
-coverage, HTML, or browser evidence. A setup failure may have logs without a
-test report. The Postman and Playwright jobs each start and stop their own local
+To investigate a failure, open the repository's **Actions** tab, select **CI**,
+and open the run:
+
+1. Read the `Quality Gate` summary to identify the unsuccessful layer.
+2. Read that job's summary and failed-step log for test counts, coverage, setup
+   errors, and the named artifact. A setup or readiness failure may produce logs
+   before any test report exists.
+3. Download the artifact from the run's **Artifacts** section. Open its JUnit,
+   TRX, coverage, or HTML report; for a Playwright test failure, inspect the
+   retained trace, screenshot, and video. Save needed evidence before its
+   retention period expires.
+
+If an unchanged rerun passes after a failure, follow the
+[flaky-test policy](#flaky-test-policy) below.
+
+The Postman and Playwright jobs each start and stop their own local
 WireMock/API/UI stack; neither contacts the real WeatherAPI.
 
 To start a manual run, open **Actions → CI → Run workflow**, choose the branch,
-and select **Run workflow**. GitHub makes manual dispatch available after the
-workflow exists on the default branch. This first workflow therefore cannot be
-manually dispatched until it has been merged to `main`.
+and select **Run workflow**. The workflow is already on `main`, so manual
+dispatch is available now.
 
 CI requires no configured repository or environment secrets, WeatherAPI key,
 or Postman API key. It verifies code and uploads diagnostic reports; it does not
 deploy or publish the application.
+
+## Flaky-test policy
+
+Required xUnit, Vitest, Postman CLI, and Playwright tests use zero automatic
+retries. Playwright runs with one worker in CI. Do not skip, disable, or
+quarantine a required test, or put `continue-on-error` on required verification.
+Bounded readiness polling waits for a service to start; it does not rerun a
+failed test or assertion.
+
+When a required run fails, preserve its run URL, logs, reports, and available
+artifacts before another run replaces local output or artifact retention ends.
+A pass after an unchanged rerun is a **suspected flake**, not a cleared failure.
+Open a GitHub issue labeled `test-flake` with the commit, testing layer, failing
+scenario, observed failure, evidence, and failed and passing run links. Find and
+fix the cause in the product, test, or deterministic environment; verify the
+affected layer and obtain a new green required gate before merging. Do not
+merge with an unresolved blocking `test-flake` issue.
+
+A manual rerun is acceptable for an identifiable GitHub infrastructure failure,
+such as a runner failure or package-download outage. Record that cause with the
+original run. Do not use reruns to normalize unexplained application or test
+instability.
 
 ## Technology
 

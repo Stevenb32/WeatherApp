@@ -19,6 +19,17 @@ collection ID, or workspace synchronization.
 
 ## Prerequisites
 
+Use the .NET SDK `10.0.303` and Node.js `24.20.0` pinned at the repository
+root. Postman CLI is available through the same pinned npm package used in CI:
+
+```powershell
+npm install --global postman-cli@1.19.4
+postman --version
+```
+
+The expected CLI version is `1.19.4`. Skip the install only if that version is
+already available on `PATH`.
+
 Restore the repository-owned tools and application dependencies once from the
 repository root:
 
@@ -32,12 +43,7 @@ cd ../..
 ```
 
 The deterministic environment supplies its own public placeholder provider key;
-do not configure a real WeatherAPI credential for this suite. Confirm that
-Postman CLI is available on `PATH`:
-
-```powershell
-postman --version
-```
+do not configure a real WeatherAPI credential for this suite.
 
 Run the remaining commands from the repository root.
 

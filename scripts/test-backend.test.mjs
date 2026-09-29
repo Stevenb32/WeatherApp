@@ -69,7 +69,8 @@ async function installDotnetStub() {
           const results = args[args.indexOf('--results-directory') + 1]
           await mkdir(path.join(results, 'current-run'), { recursive: true })
           if (!scenario.missingTrx) {
-            await writeFile(path.join(results, 'backend-tests.trx'), '<TestRun />')
+            await writeFile(path.join(results, 'backend-tests.trx'), scenario.trxText ??
+              '<TestRun><ResultSummary><Counters total="1" notExecuted="0" /></ResultSummary></TestRun>')
           }
           if (!scenario.missingCoverage) {
             await writeFile(path.join(results, 'current-run', 'coverage.cobertura.xml'), '<coverage />')
@@ -242,6 +243,22 @@ test('missing TRX fails even when coverage reports exist', async (t) => {
   const result = await runFixture(t, { missingTrx: true })
   assert.equal(result.code, 1)
   assert.match(result.stderr, /Cannot read TRX report/)
+})
+
+test('skipped backend tests fail an otherwise passing gate', async (t) => {
+  const result = await runFixture(t, {
+    trxText: '<TestRun><ResultSummary><Counters total="1" notExecuted="1" /></ResultSummary></TestRun>',
+  })
+  assert.equal(result.code, 1)
+  assert.match(result.stderr, /TRX reports 1 skipped or not-executed test/)
+  assert.ok((await stat(path.join(result.reports, 'coverage', 'index.html'))).size > 0)
+  assert.doesNotMatch(result.stdout, /coverage gate passed/)
+})
+
+test('missing backend TRX counts cannot pass verification', async (t) => {
+  const result = await runFixture(t, { trxText: '<TestRun />' })
+  assert.equal(result.code, 1)
+  assert.match(result.stderr, /exactly one test counter summary/)
 })
 
 const invalidSummaries = [

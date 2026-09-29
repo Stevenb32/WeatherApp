@@ -449,6 +449,9 @@ Do not leave orphaned processes that can affect later test runs.
 Milestone 3 uses a zero-retry quality policy.
 
 Required automated tests should use **zero automatic retries**.
+Keep Playwright at one worker in CI until an issue explicitly changes that
+policy. Bounded service-readiness polling waits for a process to start; it is
+not a retry of a failed test.
 
 Do not hide instability through:
 
@@ -458,17 +461,23 @@ Do not hide instability through:
 * Skipped required tests
 * `continue-on-error` on required verification
 
-A required test that fails and then passes unchanged should be treated as a suspected flaky test rather than assumed to be healthy.
-
-The expected response is to investigate and repair:
+A required test that fails and then passes unchanged is a suspected flaky test.
+Preserve the original run URL, logs, reports, and available artifacts before
+they are replaced. Open an issue labeled `test-flake` with the commit, testing
+layer, failing scenario, failure evidence, and failed and passing run links.
+Investigate and repair:
 
 * The product
 * The test
 * The deterministic environment
 
+Do not merge while a blocking `test-flake` issue remains unresolved. Verify the
+repair with the affected layer and a new green required gate.
+
 Manual reruns are acceptable for identifiable infrastructure failures such as a GitHub runner or external package-download failure.
 
-Do not use reruns to normalize unexplained application or test instability.
+Record the infrastructure cause. Do not use reruns to normalize unexplained
+application or test instability.
 
 ---
 
@@ -945,8 +954,8 @@ Quality Gate
 ```
 
 The final `Quality Gate` runs after all four jobs and passes only when all four
-succeed. It is the stable check intended for `main` branch protection; making it
-required belongs to the later M3-8 issue.
+succeed. The existing `Main Branch Protection` ruleset requires this exact
+GitHub Actions check for changes to `main`.
 
 Individual implementation jobs may evolve internally, but the final gate should remain the stable branch-protection contract.
 
