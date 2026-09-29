@@ -954,8 +954,8 @@ Quality Gate
 ```
 
 The final `Quality Gate` runs after all four jobs and passes only when all four
-succeed. It is the stable check intended for `main` branch protection; making it
-required belongs to the later M3-8 issue.
+succeed. The existing `Main Branch Protection` ruleset requires this exact
+GitHub Actions check for changes to `main`.
 
 Individual implementation jobs may evolve internally, but the final gate should remain the stable branch-protection contract.
 

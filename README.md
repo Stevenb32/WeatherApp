@@ -564,8 +564,8 @@ days. If a Playwright test fails and produces a trace, screenshot, or video,
 `playwright-failure-evidence-attempt-N` retains that evidence for 30 days.
 Each job writes a result summary. The final **`Quality Gate`** runs after all
 four jobs, even when one fails, and passes only when every job succeeded. Its
-name is the stable branch-protection check. The existing ruleset does not yet
-require it.
+name is the stable branch-protection check. The existing `Main Branch Protection`
+ruleset requires this check from GitHub Actions for changes to `main`.
 
 To investigate a failure, open the repository's **Actions** tab, select **CI**,
 and open the run:
