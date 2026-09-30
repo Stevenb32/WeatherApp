@@ -43,7 +43,9 @@ jobs:
           package-manager-cache: false
 
       - name: Test verification scripts
-        run: node --test scripts/test-backend.test.mjs scripts/ci-report.test.mjs scripts/ci-quality-gate.test.mjs
+        # These suites launch child processes with bounded timeouts. Run their
+        # files sequentially so a busy runner does not starve a child process.
+        run: node --test --test-concurrency=1 scripts/test-backend.test.mjs scripts/ci-report.test.mjs scripts/ci-quality-gate.test.mjs
 
       # The runner owns restore, Release build, tests, reports, and coverage floors.
       - name: Verify backend
