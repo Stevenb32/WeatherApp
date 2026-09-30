@@ -13,10 +13,48 @@ const bash = process.platform === 'win32'
   : 'bash'
 const workflow = (await readFile(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8'))
   .replaceAll('\r\n', '\n')
-const gate = workflow.split('\n  quality_gate:\n')[1]
+test('Only superseded pull-request runs are cancelled', () => {
+  const concurrency = workflow.split('\nconcurrency:\n')[1]?.split('\nenv:\n')[0]
+  assert.ok(concurrency, 'Workflow concurrency is missing')
+  assert.match(concurrency, /group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.event_name == 'pull_request' && format\('pr-\{0\}', github\.event\.pull_request\.number\) \|\| format\('run-\{0\}', github\.run_id\) \}\}/)
+  assert.match(concurrency, /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/)
+})
+const gate = workflow.split('\n  quality_gate:\n')[1]?.split('\n  publish:\n')[0]
 assert.ok(gate, 'Quality Gate job is missing')
 assert.match(gate, /\n    needs: \[backend, frontend, postman_api, playwright_e2e, container_smoke\]\n    if: always\(\)/)
 assert.match(gate, /CONTAINER_SMOKE_RESULT: \$\{\{ needs\.container_smoke\.result \}\}/)
+const publish = workflow.split('\n  publish:\n')[1]
+assert.ok(publish, 'Publish job is missing')
+test('Publish runs only after a successful main push and owns package-write permission', () => {
+  assert.match(publish, /\n    needs: quality_gate\n/)
+  assert.match(publish, /\n    if: github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'\n/)
+  assert.match(publish, /\n    runs-on: ubuntu-24\.04\n/)
+  assert.match(publish, /\n    permissions:\n      contents: read\n      packages: write\n/)
+  assert.equal((workflow.match(/^      packages: write$/gm) ?? []).length, 1)
+})
+test('Publish builds both architecture variants from the triggering commit', () => {
+  assert.match(publish, /uses: actions\/checkout@[0-9a-f]{40}[^\n]*\n        with:\n          persist-credentials: false/)
+  assert.match(publish, /uses: docker\/login-action@[0-9a-f]{40}/)
+  assert.match(publish, /registry: ghcr\.io\n          username: \$\{\{ github\.actor \}\}\n          password: \$\{\{ secrets\.GITHUB_TOKEN \}\}/)
+  assert.match(publish, /uses: docker\/setup-qemu-action@[0-9a-f]{40}/)
+  assert.match(publish, /uses: docker\/setup-buildx-action@[0-9a-f]{40}/)
+
+  for (const [name, image] of [['API', 'api'], ['UI', 'ui']]) {
+    const step = publish.split(`      - name: Build and push ${name}\n`)[1]?.split('\n      - name: ')[0]
+    assert.ok(step, `${name} build step is missing`)
+    assert.match(step, /uses: docker\/build-push-action@[0-9a-f]{40}/)
+    assert.match(step, new RegExp(`file: src/WeatherApp\\.${name === 'API' ? 'Api' : 'Ui'}/Dockerfile`))
+    assert.match(step, /context: \.\n/)
+    assert.match(step, /platforms: linux\/amd64,linux\/arm64\n/)
+    assert.match(step, /push: true\n/)
+    assert.ok(step.includes(`tags: ghcr.io/stevenb32/weatherapp-${image}:\${{ github.sha }}`))
+    assert.ok(step.includes('SOURCE_REVISION=${{ github.sha }}'))
+  }
+  assert.doesNotMatch(publish, /:latest\b/)
+  assert.match(publish, /uses: actions\/setup-node@[0-9a-f]{40}/)
+  assert.match(publish, /\n      - name: Verify published pair and summarize\n        env:\n          SOURCE_SHA: \$\{\{ github\.sha \}\}\n          API_DIGEST: \$\{\{ steps\.api_image\.outputs\.digest \}\}\n          UI_DIGEST: \$\{\{ steps\.ui_image\.outputs\.digest \}\}\n        run: node scripts\/ci-publish\.mjs\n?$/)
+  assert.doesNotMatch(publish, /if: always\(\)/)
+})
 const script = gate.split('      - name: Evaluate verification jobs\n')[1]
   .split('        run: |\n')[1]
   .split('\n').map(line => line.replace(/^ {10}/, '')).join('\n')

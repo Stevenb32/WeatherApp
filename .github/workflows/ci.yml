@@ -11,8 +11,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   CI: 'true'
@@ -45,7 +45,7 @@ jobs:
       - name: Test verification scripts
         # These suites launch child processes with bounded timeouts. Run their
         # files sequentially so a busy runner does not starve a child process.
-        run: node --test --test-concurrency=1 scripts/test-backend.test.mjs scripts/ci-report.test.mjs scripts/ci-quality-gate.test.mjs
+        run: node --test --test-concurrency=1 scripts/test-backend.test.mjs scripts/ci-report.test.mjs scripts/ci-quality-gate.test.mjs scripts/ci-publish.test.mjs
 
       # The runner owns restore, Release build, tests, reports, and coverage floors.
       - name: Verify backend
@@ -514,3 +514,68 @@ jobs:
             exit 1
           fi
           printf '\n**Result: passed.** All five verification jobs succeeded.\n' >> "$GITHUB_STEP_SUMMARY"
+
+  publish:
+    name: Publish
+    needs: quality_gate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build and push API
+        id: api_image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: src/WeatherApp.Api/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/stevenb32/weatherapp-api:${{ github.sha }}
+          build-args: |
+            SOURCE_REVISION=${{ github.sha }}
+
+      - name: Build and push UI
+        id: ui_image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: src/WeatherApp.Ui/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/stevenb32/weatherapp-ui:${{ github.sha }}
+          build-args: |
+            SOURCE_REVISION=${{ github.sha }}
+
+      - name: Verify published pair and summarize
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          API_DIGEST: ${{ steps.api_image.outputs.digest }}
+          UI_DIGEST: ${{ steps.ui_image.outputs.digest }}
+        run: node scripts/ci-publish.mjs
