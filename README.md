@@ -172,6 +172,8 @@ docker build --file src/WeatherApp.Ui/Dockerfile --build-arg SOURCE_REVISION=$re
 
 `SOURCE_REVISION` must be a full, lowercase 40-character commit SHA. Both final images label their source repository and revision. Build from a committed checkout when that label must identify the exact source: uncommitted changes are not represented by `git rev-parse HEAD`.
 
+Automated GHCR publication and its verified digest pair are described in [GitHub Actions CI](#github-actions-ci).
+
 Both containers listen on internal HTTP port `8080` and run as nonroot users. The API reads a WeatherAPI key from a file mounted at `/run/secrets/WeatherApi__ApiKey`; the mount must be readable by its nonroot process. Keep production keys outside the repository and out of image build arguments. API startup fails if the key is missing or blank. The UI serves only the built static assets and uses a relative `/api/weather` URL. A routing layer outside these images must send `/api` requests to the API; the UI image does not proxy them.
 
 ## Container Smoke
@@ -573,8 +575,9 @@ and JUnit/HTML reports and retained failure evidence.
 
 The [CI workflow](.github/workflows/ci.yml) runs for pull requests targeting
 `main`, pushes to `main`, and manual dispatch. It has no path filters. Newer
-runs for the same pull request or branch cancel superseded runs. All jobs use
-`ubuntu-24.04` and read-only repository permission.
+runs for the same pull request cancel superseded PR runs; `main` and manual
+runs do not cancel one another. All jobs use `ubuntu-24.04`. Verification jobs
+have read-only repository permission.
 
 Five independent jobs run the repository's verification layers:
 
@@ -589,10 +592,27 @@ Five independent jobs run the repository's verification layers:
 `N` is the GitHub workflow attempt number. Routine artifacts are kept for 14
 days. If a Playwright test fails and produces a trace, screenshot, or video,
 `playwright-failure-evidence-attempt-N` retains that evidence for 30 days.
-Each job writes a result summary. The final **`Quality Gate`** runs after all
+Each verification job writes a result summary. **`Quality Gate`** runs after all
 five jobs, even when one fails, and passes only when every job succeeded. Its
 name is the stable branch-protection check. The existing `Main Branch Protection`
 ruleset requires this check from GitHub Actions for changes to `main`.
+
+On a `main` push, **`Publish`** runs only after a successful Quality Gate. PRs
+and manual dispatch do not publish. This GitHub-hosted job alone has
+`packages: write` and uses the run's `GITHUB_TOKEN` to publish
+`ghcr.io/stevenb32/weatherapp-api` and `ghcr.io/stevenb32/weatherapp-ui`.
+Both images are built from the same commit for `linux/amd64` and `linux/arm64`,
+tagged with its full SHA, and labeled with the source repository and revision.
+There is no `latest` deployment selector or Pi access.
+
+The publish job checks both registry digests, both architecture variants, and
+their OCI labels before writing one run-summary section with the source SHA and
+the two `image@sha256:...` references. If either push or check fails, the job
+fails without reporting a deployable pair. A first image may remain in GHCR if
+the second push fails; only a verified digest pair should be selected for a
+release. The container packages may initially be private. After first
+publication, a package administrator must make both public and verify anonymous
+pulls of both architectures by digest with no Docker credentials.
 
 To investigate a failure, open the repository's **Actions** tab, select **CI**,
 and open the run:
@@ -618,8 +638,8 @@ and select **Run workflow**. The workflow is already on `main`, so manual
 dispatch is available now.
 
 CI requires no configured repository or environment secrets, WeatherAPI key,
-or Postman API key. It verifies code and uploads diagnostic reports; it does not
-deploy or publish the application.
+or Postman API key. Verification remains secret-free and read-only; publication
+uses the job-scoped `GITHUB_TOKEN` and does not deploy the application.
 
 ## Flaky-test policy
 

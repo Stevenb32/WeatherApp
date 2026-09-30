@@ -952,7 +952,7 @@ Clean up merged branches after confirming `main` contains the merged work.
 # GitHub Actions and Quality Gates
 
 The repository-owned `.github/workflows/ci.yml` verifies pull requests targeting
-`main`, pushes to `main`, and manual dispatch. It runs five independent jobs:
+`main`, pushes to `main`, and manual dispatch. It runs five independent verification jobs:
 
 ```text
 Backend
@@ -962,11 +962,19 @@ Playwright E2E
 Container Smoke
         ↓
 Quality Gate
+        ↓ main push only
+Publish
 ```
 
-The final `Quality Gate` runs after all five jobs and passes only when all five
+The final verification `Quality Gate` runs after all five jobs and passes only when all five
 succeed. The existing `Main Branch Protection` ruleset requires this exact
 GitHub Actions check for changes to `main`.
+
+`Publish` runs only after a successful gate on a push to `main`. It uses a
+GitHub-hosted runner and is the only job with `packages: write`; pull requests
+and manual dispatch do not publish. Report a deployable pair only after both
+multi-architecture GHCR images and their source/revision labels are verified.
+The publish job must not access or deploy to the Pi.
 
 Individual implementation jobs may evolve internally, but the final gate should remain the stable branch-protection contract.
 
@@ -974,9 +982,12 @@ When changing the gate, run `node --test scripts/ci-quality-gate.test.mjs` and
 validate workflow syntax. The gate tests execute its actual shell script with
 controlled dependency results.
 
+When changing publication, run `node --test scripts/ci-publish.test.mjs scripts/ci-quality-gate.test.mjs`
+and validate workflow syntax.
+
 Required verification jobs must not depend on servers or state created by another job.
 
-CI should remain:
+Required verification jobs should remain:
 
 * Deterministic
 * Provider-independent
@@ -986,7 +997,8 @@ CI should remain:
 
 Do not use `pull_request_target` for the Milestone 3 verification workflow.
 
-Do not add deployment or publishing behavior to the Milestone 3 CI workflow.
+Keep publication downstream of the Quality Gate. Do not add deployment or Pi
+rollout behavior to this CI workflow.
 
 Do not allow a required verification failure to be hidden with `continue-on-error`.
 
