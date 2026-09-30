@@ -15,9 +15,15 @@ builder.Configuration.AddKeyPerFile(
 
 const string e2eEnvironmentName = "E2E";
 const string e2eWeatherApiBaseUrl = "http://127.0.0.1:9090/v1/";
+const string containerSmokeEnvironmentName = "ContainerSmoke";
+const string containerSmokeWeatherApiBaseUrl = "http://provider-mock:9090/v1/";
+const string containerSmokeApiKey = "weatherapp-e2e-placeholder";
+const string containerSmokeMockHealthUrl = "http://provider-mock:9090/__admin/health";
 
 var isE2eEnvironment =
     builder.Environment.IsEnvironment(e2eEnvironmentName);
+var isContainerSmokeEnvironment =
+    builder.Environment.IsEnvironment(containerSmokeEnvironmentName);
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -47,6 +53,24 @@ builder.Services
                 StringComparison.Ordinal),
         $"WeatherApi:BaseUrl must be {e2eWeatherApiBaseUrl} " +
         $"when ASPNETCORE_ENVIRONMENT is {e2eEnvironmentName}.")
+    .Validate(
+        options =>
+            !isContainerSmokeEnvironment ||
+            string.Equals(
+                options.BaseUrl,
+                containerSmokeWeatherApiBaseUrl,
+                StringComparison.Ordinal),
+        $"WeatherApi:BaseUrl must be {containerSmokeWeatherApiBaseUrl} " +
+        $"when ASPNETCORE_ENVIRONMENT is {containerSmokeEnvironmentName}.")
+    .Validate(
+        options =>
+            !isContainerSmokeEnvironment ||
+            string.Equals(
+                options.ApiKey,
+                containerSmokeApiKey,
+                StringComparison.Ordinal),
+        $"WeatherApi:ApiKey must be the container smoke placeholder " +
+        $"when ASPNETCORE_ENVIRONMENT is {containerSmokeEnvironmentName}.")
     .Validate(
         options => options.Timeout > TimeSpan.Zero,
         "WeatherApi:Timeout must be greater than zero.")
@@ -113,6 +137,34 @@ builder.Services.AddHttpClient<WeatherApiClient>(
     });
 
 var app = builder.Build();
+
+if (isContainerSmokeEnvironment)
+{
+    // Resolve options first so invalid settings fail before any network request.
+    _ = app.Services.GetRequiredService<IOptions<WeatherApiOptions>>().Value;
+
+    using var healthClient = app.Services
+        .GetRequiredService<IHttpClientFactory>()
+        .CreateClient("ContainerSmokeMockHealth");
+    using var healthTimeout = new CancellationTokenSource(
+        TimeSpan.FromSeconds(5));
+
+    try
+    {
+        using var healthResponse = await healthClient.GetAsync(
+            containerSmokeMockHealthUrl,
+            healthTimeout.Token);
+        healthResponse.EnsureSuccessStatusCode();
+    }
+    catch (Exception exception)
+        when (exception is HttpRequestException or OperationCanceledException)
+    {
+        throw new InvalidOperationException(
+            $"ContainerSmoke requires a healthy provider-mock at " +
+            $"{containerSmokeMockHealthUrl}.",
+            exception);
+    }
+}
 
 if (builder.Environment.IsDevelopment())
 {

@@ -13,7 +13,6 @@ public sealed class ApiStartupTests
 {
     [Theory]
     [InlineData("Production")]
-    [InlineData("ContainerSmoke")]
     [InlineData("E2E")]
     public async Task HttpEndpointsOutsideDevelopmentDoNotRedirect(string environmentName)
     {
@@ -65,6 +64,109 @@ public sealed class ApiStartupTests
         start.Should()
             .Throw<OptionsValidationException>()
             .WithMessage("*WeatherApi:ApiKey is required.*");
+    }
+
+    [Fact]
+    public async Task ContainerSmokeStartsWhenMockIsHealthy()
+    {
+        var healthHandler = new MockHealthHandler(HttpStatusCode.OK);
+        using var factory = new WeatherAppFactory(
+            "http://provider-mock:9090",
+            weatherApiKey: "weatherapp-e2e-placeholder");
+        using var containerSmokeFactory = factory.WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("ContainerSmoke");
+            builder.ConfigureTestServices(services =>
+                services.AddHttpClient("ContainerSmokeMockHealth")
+                    .ConfigurePrimaryHttpMessageHandler(() => healthHandler));
+        });
+        using var client = CreateHttpClient(containerSmokeFactory);
+
+        using var response = await client.GetAsync("/health");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        healthHandler.RequestedUri.Should().Be(
+            new Uri("http://provider-mock:9090/__admin/health"));
+    }
+
+    [Theory]
+    [InlineData("https://api.weatherapi.com")]
+    [InlineData("http://127.0.0.1:9090")]
+    public void ContainerSmokeRejectsOtherProviderUrls(string providerUrl)
+    {
+        using var factory = new WeatherAppFactory(
+            providerUrl,
+            weatherApiKey: "weatherapp-e2e-placeholder");
+        using var containerSmokeFactory = factory.WithWebHostBuilder(
+            builder => builder.UseEnvironment("ContainerSmoke"));
+
+        Action start = () => containerSmokeFactory.CreateClient();
+
+        start.Should()
+            .Throw<OptionsValidationException>()
+            .WithMessage("*WeatherApi:BaseUrl must be http://provider-mock:9090/v1/*");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("incorrect-key")]
+    public void ContainerSmokeRejectsMissingOrWrongApiKey(string? apiKey)
+    {
+        using var factory = new WeatherAppFactory(
+            "http://provider-mock:9090",
+            weatherApiKey: apiKey);
+        using var containerSmokeFactory = factory.WithWebHostBuilder(
+            builder => builder.UseEnvironment("ContainerSmoke"));
+
+        Action start = () => containerSmokeFactory.CreateClient();
+
+        start.Should()
+            .Throw<OptionsValidationException>()
+            .WithMessage("*WeatherApi:ApiKey*");
+    }
+
+    [Fact]
+    public void ContainerSmokeRejectsUnavailableMock()
+    {
+        var healthHandler = new MockHealthHandler(statusCode: null);
+        using var factory = new WeatherAppFactory(
+            "http://provider-mock:9090",
+            weatherApiKey: "weatherapp-e2e-placeholder");
+        using var containerSmokeFactory = factory.WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("ContainerSmoke");
+            builder.ConfigureTestServices(services =>
+                services.AddHttpClient("ContainerSmokeMockHealth")
+                    .ConfigurePrimaryHttpMessageHandler(() => healthHandler));
+        });
+
+        Action start = () => containerSmokeFactory.CreateClient();
+
+        start.Should()
+            .Throw<InvalidOperationException>()
+            .WithMessage("*requires a healthy provider-mock*");
+        healthHandler.RequestedUri.Should().Be(
+            new Uri("http://provider-mock:9090/__admin/health"));
+    }
+
+    private sealed class MockHealthHandler(HttpStatusCode? statusCode)
+        : HttpMessageHandler
+    {
+        public Uri? RequestedUri { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            RequestedUri = request.RequestUri;
+
+            if (statusCode is null)
+            {
+                throw new HttpRequestException("The mock is unavailable.");
+            }
+
+            return Task.FromResult(new HttpResponseMessage(statusCode.Value));
+        }
     }
 
     private static HttpClient CreateHttpClient(WebApplicationFactory<Program> factory)

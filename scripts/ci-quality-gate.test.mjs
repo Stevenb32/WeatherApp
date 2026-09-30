@@ -15,23 +15,26 @@ const workflow = (await readFile(new URL('../.github/workflows/ci.yml', import.m
   .replaceAll('\r\n', '\n')
 const gate = workflow.split('\n  quality_gate:\n')[1]
 assert.ok(gate, 'Quality Gate job is missing')
-assert.match(gate, /\n    needs: \[backend, frontend, postman_api, playwright_e2e\]\n    if: always\(\)/)
+assert.match(gate, /\n    needs: \[backend, frontend, postman_api, playwright_e2e, container_smoke\]\n    if: always\(\)/)
+assert.match(gate, /CONTAINER_SMOKE_RESULT: \$\{\{ needs\.container_smoke\.result \}\}/)
 const script = gate.split('      - name: Evaluate verification jobs\n')[1]
   .split('        run: |\n')[1]
   .split('\n').map(line => line.replace(/^ {10}/, '')).join('\n')
 assert.ok(script, 'Quality Gate evaluation script is missing')
 
+const jobs = ['Backend', 'Frontend', 'Postman API', 'Playwright E2E', 'Container Smoke']
+const successful = jobs.map(() => 'success')
 const cases = [
-  { name: 'all successful', results: ['success', 'success', 'success', 'success'], code: 0 },
-  ...['Backend', 'Frontend', 'Postman API', 'Playwright E2E'].map((name, index) => ({
+  { name: 'all successful', results: successful, code: 0 },
+  ...jobs.map((name, index) => ({
     name: `${name} failed`,
-    results: ['success', 'success', 'success', 'success'].map((value, i) => i === index ? 'failure' : value),
+    results: successful.map((value, i) => i === index ? 'failure' : value),
     code: 1,
   })),
-  { name: 'cancelled dependency', results: ['success', 'success', 'cancelled', 'success'], code: 1 },
-  { name: 'skipped dependency', results: ['success', 'success', 'success', 'skipped'], code: 1 },
-  { name: 'missing result', results: ['success', '', 'success', 'success'], code: 1 },
-  { name: 'unexpected result', results: ['success', 'timed_out', 'success', 'success'], code: 1 },
+  { name: 'cancelled dependency', results: ['success', 'success', 'cancelled', 'success', 'success'], code: 1 },
+  { name: 'skipped dependency', results: ['success', 'success', 'success', 'success', 'skipped'], code: 1 },
+  { name: 'missing result', results: ['success', '', 'success', 'success', 'success'], code: 1 },
+  { name: 'unexpected result', results: ['success', 'timed_out', 'success', 'success', 'success'], code: 1 },
 ]
 
 for (const scenario of cases) {
@@ -52,6 +55,7 @@ for (const scenario of cases) {
           FRONTEND_RESULT: scenario.results[1],
           POSTMAN_RESULT: scenario.results[2],
           PLAYWRIGHT_RESULT: scenario.results[3],
+          CONTAINER_SMOKE_RESULT: scenario.results[4],
         },
       }), code: 0 }
     } catch (error) {
@@ -62,10 +66,10 @@ for (const scenario of cases) {
     assert.equal(result.code, scenario.code, result.stdout + result.stderr)
     const summary = await readFile(summaryPath, 'utf8')
     assert.match(summary, /^## Quality Gate\n\n\| Job \| Result \|/)
-    for (const [name, status] of ['Backend', 'Frontend', 'Postman API', 'Playwright E2E'].map((name, index) => [name, scenario.results[index]])) {
+    for (const [name, status] of jobs.map((name, index) => [name, scenario.results[index]])) {
       assert.ok(summary.includes(`| ${name} | \`${status}\` |`), `${name} must appear with its actual result`)
     }
-    assert.equal((summary.match(/^\| (?:Backend|Frontend|Postman API|Playwright E2E) \|/gm) ?? []).length, 4)
+    assert.equal((summary.match(/^\| (?:Backend|Frontend|Postman API|Playwright E2E|Container Smoke) \|/gm) ?? []).length, 5)
     assert.match(summary, scenario.code === 0 ? /\*\*Result: passed\.\*\*/ : /\*\*Result: failed\.\*\*/)
   })
 }

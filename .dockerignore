@@ -1,6 +1,8 @@
-# Both image builds use the repository root as their context.
+# Image builds use the repository root as their context.
 *
 !global.json
+!.config
+!.config/dotnet-tools.json
 !src
 !src/WeatherApp.Api
 !src/WeatherApp.Api/**
@@ -12,7 +14,7 @@
 **/secrets
 **/appsettings.*.json
 
-# Dependencies, generated output, and test-only files are not build inputs.
+# Keep generated output and test suites out of image build contexts.
 **/bin
 **/obj
 **/node_modules
