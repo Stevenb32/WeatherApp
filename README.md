@@ -172,7 +172,17 @@ docker build --file src/WeatherApp.Ui/Dockerfile --build-arg SOURCE_REVISION=$re
 
 `SOURCE_REVISION` must be a full, lowercase 40-character commit SHA. Both final images label their source repository and revision. Build from a committed checkout when that label must identify the exact source: uncommitted changes are not represented by `git rev-parse HEAD`.
 
-Both containers listen on internal HTTP port `8080` and run as nonroot users. The API reads a WeatherAPI key from a file mounted at `/run/secrets/WeatherApi__ApiKey`; the mount must be readable by its nonroot process. Keep the key outside the repository and out of image build arguments. API startup fails if the key is missing or blank. The UI serves only the built static assets and uses a relative `/api/weather` URL. A routing layer outside these images must send `/api` requests to the API; the UI image does not proxy them. The complete local container stack and public routing belong to later issues.
+Both containers listen on internal HTTP port `8080` and run as nonroot users. The API reads a WeatherAPI key from a file mounted at `/run/secrets/WeatherApi__ApiKey`; the mount must be readable by its nonroot process. Keep production keys outside the repository and out of image build arguments. API startup fails if the key is missing or blank. The UI serves only the built static assets and uses a relative `/api/weather` URL. A routing layer outside these images must send `/api` requests to the API; the UI image does not proxy them.
+
+## Container Smoke
+
+From the repository root, run this local container check with Docker running and Node.js `24.20.0` available:
+
+```powershell
+node scripts/container-smoke.mjs verify
+```
+
+The command builds the production API and UI images, starts the four-service Compose stack, checks the API health and fixed success/error responses through the Nginx proxy, and confirms that the UI and its assets load. Only `127.0.0.1:18080` is published. The provider is the repository's fixed WireMock fixture set, and the checked-in key file contains only a dummy placeholder for this test stack. The command prints service logs when verification fails and removes its containers, networks, and locally built images on completion or failure. Port `18080` must be free. GitHub Actions runs the same command as an independent `Container Smoke` job and retains its console log as a diagnostic artifact.
 
 ## Deterministic Full-Stack Test Environment
 
@@ -566,7 +576,7 @@ The [CI workflow](.github/workflows/ci.yml) runs for pull requests targeting
 runs for the same pull request or branch cancel superseded runs. All jobs use
 `ubuntu-24.04` and read-only repository permission.
 
-Four independent jobs run the repository's existing verification layers:
+Five independent jobs run the repository's verification layers:
 
 | Job | Responsibility | Routine artifact |
 | --- | --- | --- |
@@ -574,12 +584,13 @@ Four independent jobs run the repository's existing verification layers:
 | Frontend | Lint, coverage tests and floors, production build | `frontend-test-results-attempt-N` |
 | Postman API | Seven public API scenarios against the shared deterministic stack | `postman-api-report-attempt-N` |
 | Playwright E2E | Typecheck and all 30 Chromium, Firefox, and WebKit tests | `playwright-report-attempt-N` |
+| Container Smoke | Build and verify the production-image Compose stack through its loopback proxy | `container-smoke-attempt-N` |
 
 `N` is the GitHub workflow attempt number. Routine artifacts are kept for 14
 days. If a Playwright test fails and produces a trace, screenshot, or video,
 `playwright-failure-evidence-attempt-N` retains that evidence for 30 days.
 Each job writes a result summary. The final **`Quality Gate`** runs after all
-four jobs, even when one fails, and passes only when every job succeeded. Its
+five jobs, even when one fails, and passes only when every job succeeded. Its
 name is the stable branch-protection check. The existing `Main Branch Protection`
 ruleset requires this check from GitHub Actions for changes to `main`.
 
@@ -599,7 +610,8 @@ If an unchanged rerun passes after a failure, follow the
 [flaky-test policy](#flaky-test-policy) below.
 
 The Postman and Playwright jobs each start and stop their own local
-WireMock/API/UI stack; neither contacts the real WeatherAPI.
+WireMock/API/UI stack. The Container Smoke job owns a separate Compose stack.
+None contacts the real WeatherAPI.
 
 To start a manual run, open **Actions → CI → Run workflow**, choose the branch,
 and select **Run workflow**. The workflow is already on `main`, so manual

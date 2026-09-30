@@ -1,0 +1,68 @@
+services:
+  provider-mock:
+    build:
+      context: ../..
+      dockerfile: tests/ContainerSmoke/ProviderMock.Dockerfile
+    volumes:
+      - type: bind
+        source: ../TestEnvironment/WireMock
+        target: /app/wiremock
+        read_only: true
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, --show-error, http://127.0.0.1:9090/__admin/health]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 5s
+    networks: [private]
+
+  api:
+    build:
+      context: ../..
+      dockerfile: src/WeatherApp.Api/Dockerfile
+      args:
+        SOURCE_REVISION: "${SOURCE_REVISION:?SOURCE_REVISION is required}"
+    environment:
+      ASPNETCORE_ENVIRONMENT: ContainerSmoke
+      DOTNET_ENVIRONMENT: ContainerSmoke
+      WeatherApi__BaseUrl: http://provider-mock:9090/v1/
+    secrets:
+      - source: weather_api_key
+        target: WeatherApi__ApiKey
+    depends_on:
+      provider-mock:
+        condition: service_healthy
+    networks: [private]
+
+  ui:
+    build:
+      context: ../..
+      dockerfile: src/WeatherApp.Ui/Dockerfile
+      args:
+        SOURCE_REVISION: "${SOURCE_REVISION:?SOURCE_REVISION is required}"
+    networks: [private]
+
+  test-proxy:
+    image: nginxinc/nginx-unprivileged:stable-alpine
+    volumes:
+      - type: bind
+        source: ./nginx.conf
+        target: /etc/nginx/conf.d/default.conf
+        read_only: true
+    ports:
+      - 127.0.0.1:18080:8080
+    depends_on:
+      api:
+        condition: service_started
+      ui:
+        condition: service_started
+    networks: [private, edge]
+
+secrets:
+  weather_api_key:
+    file: ./dummy-weatherapi-key.txt
+
+networks:
+  private:
+    internal: true
+  edge:

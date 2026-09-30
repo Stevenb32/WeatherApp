@@ -57,6 +57,7 @@ WeatherApp/
 ├── .config/
 │   └── dotnet-tools.json
 ├── scripts/
+│   ├── container-smoke.mjs
 │   ├── test-backend.mjs
 │   ├── test-backend.test.mjs
 │   └── test-environment.mjs
@@ -64,6 +65,7 @@ WeatherApp/
 │   ├── WeatherApp.Api/
 │   └── WeatherApp.Ui/
 ├── tests/
+│   ├── ContainerSmoke/
 │   ├── TestEnvironment/
 │   ├── WeatherApp.Api.Tests/
 │   ├── WeatherApp.E2E/
@@ -758,6 +760,8 @@ Do not invent commands for planned infrastructure that has not yet been implemen
 
 Build the API and UI Dockerfiles with the repository root as the context and pass a full commit SHA as `SOURCE_REVISION`. The final images must retain source and revision OCI labels, run as nonroot users, and listen on internal HTTP port `8080`. Keep the WeatherAPI key out of images; the API reads it from the nonroot-readable `/run/secrets/WeatherApi__ApiKey` mount. The UI serves static assets, while external routing owns `/api` forwarding. See [the README](README.md#production-images) for build commands and runtime details.
 
+Run `node scripts/container-smoke.mjs verify` for the four-service production-image smoke stack. It uses fixed provider fixtures and a checked-in dummy key, publishes only the loopback proxy on port `18080`, and cleans up its Compose resources. Keep generated `tests/ContainerSmoke/reports/` output ignored. See [the README](README.md#container-smoke) for the local command and CI behavior.
+
 ---
 
 # Agent Workflow
@@ -948,18 +952,19 @@ Clean up merged branches after confirming `main` contains the merged work.
 # GitHub Actions and Quality Gates
 
 The repository-owned `.github/workflows/ci.yml` verifies pull requests targeting
-`main`, pushes to `main`, and manual dispatch. It runs four independent jobs:
+`main`, pushes to `main`, and manual dispatch. It runs five independent jobs:
 
 ```text
 Backend
 Frontend
 Postman API
 Playwright E2E
+Container Smoke
         ↓
 Quality Gate
 ```
 
-The final `Quality Gate` runs after all four jobs and passes only when all four
+The final `Quality Gate` runs after all five jobs and passes only when all five
 succeed. The existing `Main Branch Protection` ruleset requires this exact
 GitHub Actions check for changes to `main`.
 

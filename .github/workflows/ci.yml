@@ -416,11 +416,72 @@ jobs:
             "Artifact names: $env:PLAYWRIGHT_REPORT_NAME, $env:PLAYWRIGHT_EVIDENCE_NAME (see upload steps for availability)."
           ) | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
 
+  container_smoke:
+    name: Container Smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CONTAINER_SMOKE_PROJECT_NAME: weatherapp-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+      CONTAINER_SMOKE_ARTIFACT_NAME: container-smoke-attempt-${{ github.run_attempt }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+
+      - name: Verify container stack
+        id: container_smoke_verification
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p tests/ContainerSmoke/reports
+          node scripts/container-smoke.mjs verify 2>&1 | tee tests/ContainerSmoke/reports/container-smoke.log
+
+      - name: Ensure container cleanup
+        if: always()
+        shell: bash
+        env:
+          SOURCE_REVISION: ${{ github.sha }}
+        run: |
+          if [[ -f tests/ContainerSmoke/compose.yaml ]]; then
+            set -o pipefail
+            mkdir -p tests/ContainerSmoke/reports
+            docker compose -p "$CONTAINER_SMOKE_PROJECT_NAME" -f tests/ContainerSmoke/compose.yaml down --volumes --remove-orphans --rmi local 2>&1 | tee tests/ContainerSmoke/reports/cleanup.log
+          fi
+
+      - name: Upload container smoke diagnostics
+        if: always() && hashFiles('tests/ContainerSmoke/reports/**') != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ env.CONTAINER_SMOKE_ARTIFACT_NAME }}
+          path: tests/ContainerSmoke/reports/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Summarize container smoke
+        if: always()
+        shell: bash
+        env:
+          TEST_OUTCOME: ${{ steps.container_smoke_verification.outcome || 'skipped' }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          {
+            printf '## Container Smoke\n\n'
+            printf 'Result: **%s**. Verification command: **%s**.\n\n' "$JOB_STATUS" "$TEST_OUTCOME"
+            printf 'Diagnostic artifact: `%s` (see upload step for availability).\n' "$CONTAINER_SMOKE_ARTIFACT_NAME"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   quality_gate:
     name: Quality Gate
     runs-on: ubuntu-24.04
     timeout-minutes: 2
-    needs: [backend, frontend, postman_api, playwright_e2e]
+    needs: [backend, frontend, postman_api, playwright_e2e, container_smoke]
     if: always()
     steps:
       - name: Evaluate verification jobs
@@ -430,6 +491,7 @@ jobs:
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           POSTMAN_RESULT: ${{ needs.postman_api.result }}
           PLAYWRIGHT_RESULT: ${{ needs.playwright_e2e.result }}
+          CONTAINER_SMOKE_RESULT: ${{ needs.container_smoke.result }}
         run: |
           printf '## Quality Gate\n\n| Job | Result |\n| --- | --- |\n' >> "$GITHUB_STEP_SUMMARY"
           failed=0
@@ -437,7 +499,8 @@ jobs:
             "Backend:$BACKEND_RESULT" \
             "Frontend:$FRONTEND_RESULT" \
             "Postman API:$POSTMAN_RESULT" \
-            "Playwright E2E:$PLAYWRIGHT_RESULT"; do
+            "Playwright E2E:$PLAYWRIGHT_RESULT" \
+            "Container Smoke:$CONTAINER_SMOKE_RESULT"; do
             job=${entry%%:*}
             result=${entry#*:}
             printf '| %s | `%s` |\n' "$job" "$result" >> "$GITHUB_STEP_SUMMARY"
@@ -448,4 +511,4 @@ jobs:
             echo 'Quality Gate failed: every verification job must succeed.' >&2
             exit 1
           fi
-          printf '\n**Result: passed.** All four verification jobs succeeded.\n' >> "$GITHUB_STEP_SUMMARY"
+          printf '\n**Result: passed.** All five verification jobs succeeded.\n' >> "$GITHUB_STEP_SUMMARY"

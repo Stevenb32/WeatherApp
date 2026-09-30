@@ -8,6 +8,7 @@ src/WeatherApp.Ui/reports/
 tests/WeatherApp.Api.Tests/reports/
 tests/WeatherApp.Postman/reports/
 tests/WeatherApp.E2E/reports/
+tests/ContainerSmoke/reports/
 tests/WeatherApp.E2E/test-results/
 
 .env
