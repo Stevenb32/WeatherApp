@@ -176,6 +176,10 @@ Automated GHCR publication and its verified digest pair are described in [GitHub
 
 Both containers listen on internal HTTP port `8080` and run as nonroot users. The API reads a WeatherAPI key from a file mounted at `/run/secrets/WeatherApi__ApiKey`; the mount must be readable by its nonroot process. Keep production keys outside the repository and out of image build arguments. API startup fails if the key is missing or blank. The UI serves only the built static assets and uses a relative `/api/weather` URL. A routing layer outside these images must send `/api` requests to the API; the UI image does not proxy them.
 
+## Live Deployment
+
+The verified production app is available at [weather.stevenborkowski.dev](https://weather.stevenborkowski.dev/). After the `main` Quality Gate passes, CI publishes a matching API/UI image pair by immutable digest. A separate private deployment workflow runs that pair on the Raspberry Pi. Cloudflare proxies HTTPS to the shared edge, which routes `/api` to the API and other WeatherApp paths to the UI. Deployment and rollback procedures remain in the private infrastructure runbook.
+
 ## Container Smoke
 
 From the repository root, run this local container check with Docker running and Node.js `24.20.0` available:
@@ -681,5 +685,3 @@ instability.
 * Postman CLI
 * Playwright
 * WeatherAPI
-
-Production deployment is outside the current milestone.
