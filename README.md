@@ -2,9 +2,11 @@
 
 [![CI](https://github.com/Stevenb32/WeatherApp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Stevenb32/WeatherApp/actions/workflows/ci.yml?query=branch%3Amain)
 
-WeatherApp is an in-progress full-stack weather application built as a portfolio and learning project focused on software development, QA automation, SDET practices, DevOps, and agentic engineering workflows.
+WeatherApp v1 is a full-stack weather application built as a portfolio and learning project focused on software development, QA automation, SDET practices, DevOps, and agentic engineering workflows.
 
-The backend uses an ASP.NET Core Minimal API to retrieve and process forecast data from [WeatherAPI](https://www.weatherapi.com/). The frontend uses React, TypeScript, and Vite and is being developed incrementally to present that data to users.
+The backend uses an ASP.NET Core Minimal API to retrieve and process forecast data from [WeatherAPI](https://www.weatherapi.com/). The frontend uses React, TypeScript, and Vite to present that data to users.
+
+**Live app:** [weather.stevenborkowski.dev](https://weather.stevenborkowski.dev/)
 
 ## Project Status
 
@@ -14,9 +16,9 @@ The backend uses an ASP.NET Core Minimal API to retrieve and process forecast da
 
 **Milestone 3 — Automated Quality Gates and CI: Complete**
 
-**Milestone 4 — Containerization and Deployment: In progress**
+**Milestone 4 — Containerization and Deployment: Complete**
 
-The backend currently supports:
+The backend supports:
 
 * WeatherAPI integration through a typed `HttpClient`
 * Strongly typed configuration with startup validation
@@ -33,7 +35,7 @@ The backend currently supports:
 * Local backend test reports and global line/branch coverage gates
 * Black-box public API testing with Postman CLI
 
-The frontend currently includes:
+The frontend includes:
 
 * An accessible, responsive Weather App shell
 * City search with inline blank-input validation
@@ -474,7 +476,7 @@ global totals, then follow directory and file links to inspect uncovered lines
 and branches. Review the file list for missing production code or included test
 support. The JSON summary exposes `total.lines`, `total.branches`,
 `total.functions`, and `total.statements`, each with `total`, `covered`, and `pct`
-values suitable for a future GitHub job summary.
+values used by the GitHub Actions frontend job summary.
 
 Each test run overwrites the JUnit file. Each coverage run also cleans and
 replaces the `coverage/` directory; an ordinary test run does not refresh coverage
@@ -614,9 +616,8 @@ their OCI labels before writing one run-summary section with the source SHA and
 the two `image@sha256:...` references. If either push or check fails, the job
 fails without reporting a deployable pair. A first image may remain in GHCR if
 the second push fails; only a verified digest pair should be selected for a
-release. The container packages may initially be private. After first
-publication, a package administrator must make both public and verify anonymous
-pulls of both architectures by digest with no Docker credentials.
+release. At first publication, both packages were public, and anonymous pulls
+by digest succeeded for both architectures with no Docker credentials.
 
 To investigate a failure, open the repository's **Actions** tab, select **CI**,
 and open the run:
