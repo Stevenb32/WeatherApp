@@ -11,7 +11,7 @@ WeatherApp is a full-stack portfolio and learning project focused on:
 * CI/CD
 * Agentic engineering workflows
 
-The application itself should remain intentionally small. The engineering practices around building, testing, integrating, and eventually deploying it are a major part of the project.
+The application itself should remain intentionally small. The engineering practices around building, testing, integrating, and deploying it are a major part of the project.
 
 Milestone 1 established the backend API foundation.
 
@@ -19,7 +19,7 @@ Milestone 2 established the React MVP.
 
 Milestone 3 established deterministic automated quality gates and CI.
 
-Milestone 4 is introducing production container images through its individual issues.
+Milestone 4 established production container images, CI publication, and the verified Raspberry Pi deployment.
 
 Do not add product features or engineering infrastructure outside the active GitHub Issue unless they are required to satisfy that issue's acceptance criteria.
 
