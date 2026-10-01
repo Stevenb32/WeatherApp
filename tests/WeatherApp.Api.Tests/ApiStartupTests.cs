@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace WeatherApp.Api.Tests;
@@ -53,17 +54,25 @@ public sealed class ApiStartupTests
     [InlineData(" ")]
     public void MissingOrBlankApiKeyFailsAtStartup(string? apiKey)
     {
+        using var startupLog = new StartupValidationLogger();
         using var factory = new WeatherAppFactory(
             "http://127.0.0.1:9090",
             weatherApiKey: apiKey);
-        using var productionFactory = factory.WithWebHostBuilder(
-            builder => builder.UseEnvironment("Production"));
+        using var productionFactory = factory.WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("Production");
+            builder.ConfigureLogging(logging => logging.AddProvider(startupLog));
+        });
 
         Action start = () => productionFactory.CreateClient();
 
-        start.Should()
-            .Throw<OptionsValidationException>()
-            .WithMessage("*WeatherApi:ApiKey is required.*");
+        // Failed-host teardown can mask the validation error returned by CreateClient.
+        // The host log records the actual startup failure before teardown begins.
+        start.Should().Throw<Exception>();
+        startupLog.ValidationException.Should()
+            .NotBeNull()
+            .And.Match<OptionsValidationException>(exception =>
+                exception.Message.Contains("WeatherApi:ApiKey is required."));
     }
 
     [Fact]
@@ -167,6 +176,34 @@ public sealed class ApiStartupTests
 
             return Task.FromResult(new HttpResponseMessage(statusCode.Value));
         }
+    }
+
+    private sealed class StartupValidationLogger : ILoggerProvider, ILogger
+    {
+        public OptionsValidationException? ValidationException { get; private set; }
+
+        public ILogger CreateLogger(string categoryName) => this;
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+            => null;
+
+        public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Error;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel >= LogLevel.Error &&
+                exception is OptionsValidationException validationException)
+            {
+                ValidationException = validationException;
+            }
+        }
+
+        public void Dispose() { }
     }
 
     private static HttpClient CreateHttpClient(WebApplicationFactory<Program> factory)
