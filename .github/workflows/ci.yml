@@ -315,7 +315,8 @@ jobs:
   playwright_e2e:
     name: Playwright E2E
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # Browser system packages can download slowly from the hosted Ubuntu mirror.
+    timeout-minutes: 40
     env:
       PLAYWRIGHT_REPORT_NAME: playwright-report-attempt-${{ github.run_attempt }}
       PLAYWRIGHT_EVIDENCE_NAME: playwright-failure-evidence-attempt-${{ github.run_attempt }}
