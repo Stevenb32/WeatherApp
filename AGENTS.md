@@ -171,6 +171,37 @@ Keep generated `reports/` and `test-results/` output ignored. Use this directory
 
 ---
 
+## Production Deployment Ownership
+
+This repository owns:
+
+- WeatherApp source code
+- application tests
+- Dockerfiles
+- CI quality gates
+- multi-architecture GHCR image publication
+- verification of the published API/UI image pair
+
+This repository does not own the production Raspberry Pi Compose configuration
+or production deployment workflow.
+
+Production deployment is owned by:
+
+https://github.com/Stevenb32/homelab-infra
+
+Specifically:
+
+- `apps/weatherapp/compose.yml`
+- `.github/workflows/deploy-weatherapp.yml`
+
+Do not add Raspberry Pi deployment runners, production Compose files, production
+secrets, or production deployment automation to this repository.
+
+A successful WeatherApp `Publish` job must not automatically deploy production.
+Production promotion remains an explicit manual action in `homelab-infra`.
+
+---
+
 # Architecture Principles
 
 ## Prefer Simplicity

@@ -180,17 +180,35 @@ Both containers listen on internal HTTP port `8080` and run as nonroot users. Th
 
 ## Live Deployment
 
-The verified production app is available at [weather.stevenborkowski.dev](https://weather.stevenborkowski.dev/). After the `main` Quality Gate passes, CI publishes a matching API/UI image pair by immutable digest. A separate private deployment workflow runs that pair on the Raspberry Pi. Cloudflare proxies HTTPS to the shared edge, which routes `/api` to the API and other WeatherApp paths to the UI. Deployment and rollback procedures remain in the private infrastructure runbook.
+The verified production app is available at:
 
-## Container Smoke
+https://weather.stevenborkowski.dev/
 
-From the repository root, run this local container check with Docker running and Node.js `24.20.0` available:
+Production deployment is owned by the separate homelab infrastructure repository:
 
-```powershell
-node scripts/container-smoke.mjs verify
-```
+https://github.com/Stevenb32/homelab-infra
 
-The command builds the production API and UI images, starts the four-service Compose stack, checks the API health and fixed success/error responses through the Nginx proxy, and confirms that the UI and its assets load. Only `127.0.0.1:18080` is published. The provider is the repository's fixed WireMock fixture set, and the checked-in key file contains only a dummy placeholder for this test stack. The command prints service logs when verification fails and removes its containers, networks, and locally built images on completion or failure. Port `18080` must be free. GitHub Actions runs the same command as an independent `Container Smoke` job and retains its console log as a diagnostic artifact.
+After the `main` Quality Gate passes, this repository publishes a matching API/UI
+image pair to GHCR. Both images are built from the same WeatherApp source revision
+for AMD64 and ARM64 and are verified before being considered deployable.
+
+Building and publishing images does not automatically deploy production.
+
+Production promotion is manual:
+
+1. Select a verified API/UI digest pair from a successful WeatherApp `Publish` job.
+2. Update the pinned image digests in:
+   `homelab-infra/apps/weatherapp/compose.yml`
+3. Commit and push the `homelab-infra` change.
+4. Manually run the `Deploy WeatherApp` workflow in `homelab-infra`.
+
+The Raspberry Pi pulls the prebuilt GHCR images; it does not build WeatherApp
+source code.
+
+Deployment configuration, production validation, and rollback procedures are
+documented in:
+
+https://github.com/Stevenb32/homelab-infra/tree/main/apps/weatherapp
 
 ## Deterministic Full-Stack Test Environment
 
